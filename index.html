@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob: https://api.github.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Firma de documento</title>
+    <meta name="description" content="Firma de documentos en línea." />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="theme-color" content="#1f3350" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%231f3350'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='20' text-anchor='middle' fill='%23f5f3ee'%3EF%3C/text%3E%3C/svg%3E"
+    />
+    <script type="module" crossorigin src="/firma/assets/cliente-bFuOBbV6.js"></script>
+    <link rel="modulepreload" crossorigin href="/firma/assets/modulepreload-polyfill-B5Qt9EMX.js">
+    <link rel="modulepreload" crossorigin href="/firma/assets/trazo-C8Ab_4XW.js">
+    <link rel="modulepreload" crossorigin href="/firma/assets/pdflib-Ckou-aDl.js">
+    <link rel="modulepreload" crossorigin href="/firma/assets/comun-GMPavCNT.js">
+    <link rel="modulepreload" crossorigin href="/firma/assets/pdfjs-CYG23OVI.js">
+    <link rel="stylesheet" crossorigin href="/firma/assets/comun-lK16B2je.css">
+  </head>
+  <body>
+    <header class="barra">
+      <div class="barra-in">
+        <span class="marca">Firma de documentos<span class="marca-sub" id="marca-sub"></span></span>
+        <a class="boton chico" id="volver-panel" href="estudio/" hidden>Panel del estudio</a>
+      </div>
+    </header>
+
+    <main class="contenedor">
+      <section class="intro">
+        <p class="antetitulo" id="antetitulo">Documento para firmar</p>
+        <h1 id="titulo">Firma de documento</h1>
+        <p id="bajada" class="bajada">Seleccione el PDF, complete sus datos y firme en el recuadro.</p>
+        <div id="instrucciones" class="instrucciones" hidden>
+          <strong>Indicaciones del estudio</strong>
+          <p id="instrucciones-texto"></p>
+        </div>
+      </section>
+
+      <div id="error" class="aviso aviso-error" role="alert" hidden></div>
+      <div id="cargando" class="cargando" hidden><span class="ruedita" aria-hidden="true"></span><span id="cargando-texto">Abriendo el documento…</span></div>
+
+      <section id="elegir" class="tarjeta" hidden>
+        <label class="soltar" id="soltar">
+          <input type="file" id="archivo" accept="application/pdf,.pdf" />
+          <strong id="elegir-texto">Seleccionar archivo PDF</strong>
+          <span>o arrástrelo aquí</span>
+        </label>
+        <p class="nota" id="elegir-nota">El archivo se procesa en este dispositivo y no se envía a ningún servidor.</p>
+      </section>
+
+      <div id="trabajo" class="trabajo" hidden>
+        <section class="columna-doc" aria-label="Documento">
+          <div class="doc-cabecera">
+            <div>
+              <div id="doc-nombre" class="doc-nombre"></div>
+              <div id="doc-hojas" class="doc-hojas"></div>
+            </div>
+            <button type="button" id="cambiar" class="boton chico" hidden>Cambiar archivo</button>
+          </div>
+          <div id="aviso-firmas-digitales" class="aviso aviso-alerta" hidden>
+            Este PDF contiene firmas digitales con certificado. Al agregar la firma, esas firmas dejarán de poder verificarse.
+          </div>
+          <div id="aviso-firmado" class="aviso aviso-ok" hidden>Vista del documento firmado.</div>
+          <div id="hojas" class="hojas"></div>
+        </section>
+
+        <aside class="columna-pasos">
+          <section class="tarjeta paso" id="paso-datos">
+            <h2><span class="num">1</span> Datos del firmante</h2>
+            <p class="ayuda">Nombre completo, DNI y demás datos que deban constar debajo de la firma. Puede usar varias líneas.</p>
+            <textarea
+              id="texto"
+              rows="4"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="Nombre y apellido&#10;DNI&#10;Domicilio"
+            ></textarea>
+            <label class="check solo-estudio"><input type="checkbox" id="con-fecha" checked /> Incluir fecha y hora</label>
+          </section>
+
+          <section class="tarjeta paso" id="paso-firmas">
+            <h2><span class="num" id="num-firmas">2</span> <span id="titulo-firmas">Firma</span></h2>
+
+            <div id="modos" class="alcances alcances-3 solo-estudio" role="radiogroup" aria-label="Cantidad de firmas">
+              <label class="alcance"><input type="radio" name="modo" value="una" checked /><span><strong>Una firma</strong><small>En una hoja</small></span></label>
+              <label class="alcance"><input type="radio" name="modo" value="todas" /><span><strong>Todas las hojas</strong><small id="modo-todas-detalle">Una firma por hoja</small></span></label>
+              <label class="alcance"><input type="radio" name="modo" value="elegir" /><span><strong>Personalizado</strong><small>Ubicación libre</small></span></label>
+            </div>
+            <p class="resumen solo-estudio" id="resumen" role="status"></p>
+
+            <div class="fichas solo-estudio" id="fichas" aria-label="Firmas"></div>
+
+            <div class="casillero-cabecera solo-estudio">
+              <button type="button" class="boton chico" id="cas-ant" aria-label="Firma anterior">‹</button>
+              <div class="casillero-titulo">
+                <strong id="cas-titulo">Firma 1</strong>
+                <select id="cas-hoja" aria-label="Hoja de esta firma"></select>
+                <span id="cas-hoja-fija" class="cas-hoja-fija"></span>
+              </div>
+              <button type="button" class="boton chico" id="cas-sig" aria-label="Firma siguiente">›</button>
+            </div>
+
+            <div class="editor-hoja solo-estudio" id="editor-hoja">
+              <img id="ed-img" alt="" />
+              <div id="ed-capas"></div>
+            </div>
+            <p class="aviso aviso-alerta aviso-chico solo-estudio" id="aviso-tapa" hidden>
+              No hay espacio libre en esta hoja: la firma puede superponerse al texto. Muévala o reduzca su tamaño.
+            </p>
+            <p class="ayuda centrada solo-estudio">Se ubica debajo del texto. Para moverla, arrástrela o toque la hoja.</p>
+            <div class="rapidos solo-estudio">
+              <span class="rapidos-titulo">Alinear</span>
+              <button type="button" class="boton chico" data-pos="izq">Izquierda</button>
+              <button type="button" class="boton chico" data-pos="centro">Centro</button>
+              <button type="button" class="boton chico" data-pos="der">Derecha</button>
+            </div>
+            <label class="tamano solo-estudio">
+              <span>Tamaño</span>
+              <input type="range" id="tamano" min="70" max="420" step="2" />
+              <span id="tamano-cm" class="tamano-cm"></span>
+            </label>
+            <div class="fila-botones solo-estudio" id="acciones-elegir">
+              <button type="button" class="boton chico" id="agregar">Agregar firma en esta hoja</button>
+              <button type="button" class="boton chico peligro" id="quitar">Quitar firma</button>
+            </div>
+
+            <div id="zona-pad" class="zona-pad">
+              <p class="pad-titulo" id="pad-titulo">Firme aquí</p>
+              <div class="pad-lugar" id="pad-lugar">
+                <div class="pad-marco" id="pad-marco">
+                  <canvas id="pad" aria-label="Recuadro de firma"></canvas>
+                  <div class="pad-linea" aria-hidden="true"></div>
+                  <div class="pad-guia" id="pad-guia" aria-hidden="true">Firme sobre la línea</div>
+                </div>
+              </div>
+              <div class="fila-botones herramientas-pad">
+                <button type="button" class="boton chico" id="deshacer">Deshacer</button>
+                <button type="button" class="boton chico" id="borrar">Borrar</button>
+                <button type="button" class="boton chico" id="ampliar">Ampliar</button>
+                <span class="tintas" role="radiogroup" aria-label="Color de la tinta">
+                  <button type="button" class="tinta activa" data-color="#1b3a8a" role="radio" aria-checked="true" title="Tinta azul" aria-label="Tinta azul"></button>
+                  <button type="button" class="tinta" data-color="#111111" role="radio" aria-checked="false" title="Tinta negra" aria-label="Tinta negra"></button>
+                </span>
+              </div>
+              <button type="button" class="boton principal grande siguiente" id="siguiente">Siguiente firma</button>
+              <p class="ayuda centrada pista" id="pista-enter">Puede presionar Enter para continuar.</p>
+            </div>
+          </section>
+
+          <section class="tarjeta paso" id="paso-final">
+            <button type="button" class="boton principal grande" id="firmar">Firmar documento</button>
+            <p class="ayuda centrada" id="falta" role="status"></p>
+            <div id="resultado" class="resultado" hidden>
+              <p class="aviso aviso-ok" id="resultado-texto">Documento firmado.</p>
+              <p class="aviso aviso-alerta" id="resultado-error" hidden></p>
+              <button type="button" class="boton principal grande" id="descargar">Descargar PDF firmado</button>
+              <button type="button" class="boton grande" id="compartir" hidden>Compartir</button>
+              <button type="button" class="boton" id="descargar-imagen">Descargar firma (PNG)</button>
+              <button type="button" class="boton enlace" id="editar">Volver a editar</button>
+            </div>
+          </section>
+
+          <section class="tarjeta paso" id="paso-enviar" hidden>
+            <h2><span class="num">2</span> Envío al cliente</h2>
+            <label class="campo">
+              <span>Título del documento</span>
+              <input id="env-titulo" />
+            </label>
+            <label class="campo">
+              <span>Indicaciones para el cliente <small>(opcional)</small></span>
+              <textarea id="env-indicaciones" rows="3" placeholder="Por ejemplo: firmar en todas las hojas."></textarea>
+            </label>
+            <button type="button" class="boton principal grande" id="env-generar">Generar enlace</button>
+            <p id="env-estado" class="estado" role="status"></p>
+            <div id="env-resultado" hidden>
+              <input id="env-link" class="link-campo" readonly />
+              <div class="fila-botones">
+                <button type="button" class="boton chico principal" id="env-copiar">Copiar enlace</button>
+                <a class="boton chico" id="env-whatsapp" target="_blank" rel="noopener">Enviar por WhatsApp</a>
+                <a class="boton chico" id="env-abrir" target="_blank" rel="noopener">Vista previa</a>
+                <button type="button" class="boton chico" id="env-otro">Preparar otro</button>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </main>
+
+    <div id="pantalla-firma" class="pantalla-firma" hidden>
+      <div class="pantalla-firma-barra">
+        <span id="pf-titulo">Firme en el recuadro</span>
+        <span class="pantalla-firma-acciones">
+          <button type="button" class="boton chico" id="pf-deshacer">Deshacer</button>
+          <button type="button" class="boton chico" id="pf-borrar">Borrar</button>
+          <button type="button" class="boton chico" id="pf-cerrar">Cerrar</button>
+        </span>
+      </div>
+      <div class="pantalla-firma-lugar" id="pf-lugar"></div>
+      <div class="pantalla-firma-pie">
+        <button type="button" class="boton chico" id="pf-ant">Anterior</button>
+        <button type="button" class="boton principal" id="pf-sig">Siguiente firma</button>
+      </div>
+      <p class="pantalla-firma-nota">En el teléfono, gire la pantalla para tener más espacio.</p>
+    </div>
+
+    <footer class="pie">
+      <p id="pie-privacidad">El archivo se procesa en este dispositivo y no se envía a ningún servidor.</p>
+      <p id="pie-estudio" hidden><a href="estudio/">Panel del estudio</a></p>
+    </footer>
+
+  </body>
+</html>
