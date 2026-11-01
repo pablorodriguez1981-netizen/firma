@@ -12,6 +12,8 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json"
   },
   "dependencies": {
+    "@fontsource/ibm-plex-sans": "^5.3.0",
+    "@fontsource/source-serif-4": "^5.3.1",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.5.438",
     "signature_pad": "^5.1.4"

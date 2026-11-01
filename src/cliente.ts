@@ -111,8 +111,8 @@ function descargar(bytes: Uint8Array, nombre: string, tipo: string) {
 }
 
 function lista(nums: number[]): string {
-  if (nums.length === 1) return `la ${nums[0]}`;
-  return `las ${nums.slice(0, -1).join(', ')} y ${nums[nums.length - 1]}`;
+  if (nums.length === 1) return String(nums[0]);
+  return `${nums.slice(0, -1).join(', ')} y ${nums[nums.length - 1]}`;
 }
 
 function cm(pt: number) {
@@ -160,7 +160,7 @@ function aplicarModo(modo: Modo, preguntar = true): boolean {
     nuevos = antes.length ? antes : [nuevoCasillero(total)];
   }
   const perdidas = antes.filter((c) => c.trazos.length && !nuevos.includes(c)).length;
-  if (perdidas && preguntar && !confirm(`Se ${perdidas === 1 ? 'va a borrar 1 firma ya hecha' : `van a borrar ${perdidas} firmas ya hechas`}. ¿Seguir?`)) {
+  if (perdidas && preguntar && !confirm(`Se ${perdidas === 1 ? 'eliminará 1 firma ya realizada' : `eliminarán ${perdidas} firmas ya realizadas`}. ¿Desea continuar?`)) {
     return false;
   }
   for (const c of antes) if (!nuevos.includes(c)) liberar(c);
@@ -239,7 +239,7 @@ async function abrirDesdeLink(): Promise<boolean> {
   if (!/[#&]d=/.test(location.hash)) return false;
   const datos = leerEnlace(location.hash, repoDatosPredeterminado(location));
   if (!datos || !datos.repo) {
-    mostrarError('El link está incompleto. Copialo entero o pedile al estudio que te lo reenvíe.');
+    mostrarError('El enlace está incompleto. Solicite al estudio que se lo reenvíe.');
     return true;
   }
   estado.desdeLink = true;
@@ -252,13 +252,13 @@ async function abrirDesdeLink(): Promise<boolean> {
       cifrado = await gh.leer(rutaDocumento(datos.id));
     } catch (e) {
       if (e instanceof ErrorGitHub && e.estado === 404) {
-        throw new Error('Este documento ya no está disponible. Pedile al estudio que te mande un link nuevo.');
+        throw new Error('Este documento ya no está disponible. Solicite al estudio un nuevo enlace.');
       }
       if (e instanceof ErrorGitHub && e.estado === 401) {
-        throw new Error('Este link venció. Pedile al estudio que te mande uno nuevo.');
+        throw new Error('Este enlace ya no es válido. Solicite al estudio un nuevo enlace.');
       }
       if (e instanceof ErrorGitHub && e.estado === 0) throw e;
-      throw new Error('No se pudo descargar el documento. Probá de nuevo en un rato.');
+      throw new Error('No se pudo descargar el documento. Intente nuevamente en unos minutos.');
     }
     cargando('Abriendo el documento…');
     const { cabecera, pdf } = await descifrarDocumento<Cabecera>(cifrado, datos.clave);
@@ -268,7 +268,7 @@ async function abrirDesdeLink(): Promise<boolean> {
   } catch (e) {
     mostrarError(
       e instanceof LinkInvalidoError
-        ? 'El link está incompleto o el documento está dañado. Pedile al estudio que te lo reenvíe.'
+        ? 'El enlace está incompleto o el documento está dañado. Solicite al estudio que se lo reenvíe.'
         : e instanceof Error
           ? e.message
           : 'No se pudo abrir el documento.',
@@ -281,9 +281,11 @@ async function abrirDesdeLink(): Promise<boolean> {
 
 function aplicarCabecera(c: Cabecera) {
   const titulo = c.titulo || c.archivo;
-  $('titulo').textContent = titulo ? `Firmá: ${titulo}` : 'Firmá tu documento';
-  $('bajada').textContent = 'Leé el documento, escribí tus datos y firmá con el dedo. Al terminar, el documento firmado le llega solo al estudio.';
-  if (titulo) document.title = `Firmar · ${titulo}`;
+  $('titulo').textContent = titulo || 'Firma de documento';
+  $('bajada').textContent =
+    'Lea el documento, complete sus datos y firme en el recuadro. Al finalizar, el documento firmado se envía automáticamente al estudio.';
+  $('pie-privacidad').textContent = 'El documento se transmite cifrado y sólo puede abrirse con este enlace.';
+  if (titulo) document.title = `${titulo} · Firma de documento`;
   if (c.instrucciones?.trim()) {
     $('instrucciones-texto').textContent = c.instrucciones.trim();
     $('instrucciones').hidden = false;
@@ -334,8 +336,8 @@ async function cargarPdf(bytes: Uint8Array, nombre: string, cabecera?: Cabecera)
   } catch (e) {
     throw new Error(
       e instanceof PdfProtegidoError
-        ? 'Este PDF está protegido (con contraseña o contra cambios) y no se puede firmar. Hace falta una versión sin protección.'
-        : 'No se pudo leer el archivo. ¿Es un PDF válido?',
+        ? 'El PDF está protegido con contraseña o contra modificaciones y no puede firmarse.'
+        : 'No se pudo leer el archivo. Verifique que sea un PDF válido.',
     );
   }
   if (!info.hojas.length) throw new Error('El PDF no tiene hojas.');
@@ -357,7 +359,7 @@ async function cargarPdf(bytes: Uint8Array, nombre: string, cabecera?: Cabecera)
   $('doc-nombre').textContent = nombre;
   $('doc-hojas').textContent = total === 1 ? '1 hoja' : `${total} hojas`;
   $('aviso-firmas-digitales').hidden = !info.firmasDigitales;
-  $('modo-todas-detalle').textContent = total === 1 ? 'El documento tiene 1 hoja' : `${total} firmas, una por hoja`;
+  $('modo-todas-detalle').textContent = total === 1 ? 'El documento tiene una hoja' : `Una por hoja (${total})`;
   $<HTMLSelectElement>('cas-hoja').replaceChildren(
     ...info.hojas.map((_, i) => {
       const o = document.createElement('option');
@@ -407,7 +409,7 @@ function sincronizarCapas(cont: HTMLElement, hoja: number, editable: boolean) {
       if (img.src !== c.imagen.url) img.src = c.imagen.url;
     } else img.removeAttribute('src');
     const varias = estado.casilleros.length > 1;
-    etiqueta.textContent = estado.preparar ? `Firma ${i + 1}` : varias ? `Firma ${i + 1}` : 'Tu firma';
+    etiqueta.textContent = varias ? `Firma ${i + 1}` : 'Firma';
     el.classList.toggle('vacia', !c.imagen);
     el.classList.toggle('actual', i === estado.actual);
     el.classList.toggle('alerta', !c.libre && !c.manual);
@@ -490,7 +492,7 @@ function armarHojas(visor: Visor, conFirmas: boolean) {
       const agregar = document.createElement('button');
       agregar.type = 'button';
       agregar.className = 'boton chico hoja-agregar';
-      agregar.textContent = '＋ Firma acá';
+      agregar.textContent = 'Agregar firma';
       agregar.addEventListener('click', () => agregarCasillero(n));
       pie.append(marca, mover, agregar);
       lienzo.addEventListener('click', (e) => {
@@ -516,7 +518,7 @@ function actualizarHojas() {
     const cuantas = estado.casilleros.filter((c) => c.hoja === n).length;
     hoja.classList.toggle('elegida', cuantas > 0);
     const marca = hoja.querySelector<HTMLElement>('.hoja-marca');
-    if (marca) marca.textContent = cuantas ? `✍️ ${cuantas === 1 ? '1 firma' : `${cuantas} firmas`}` : '';
+    if (marca) marca.textContent = cuantas ? (cuantas === 1 ? '1 firma' : `${cuantas} firmas`) : '';
     const mover = hoja.querySelector<HTMLElement>('.hoja-mover');
     if (mover) mover.hidden = fijo || estado.modo !== 'una' || cuantas > 0;
     const agregar = hoja.querySelector<HTMLElement>('.hoja-agregar');
@@ -548,17 +550,15 @@ function refrescar() {
   if (estado.preparar) {
     resumen =
       n === 1
-        ? `El cliente va a firmar una vez, en la hoja ${c.hoja}.`
-        : `El cliente va a firmar ${n} veces${estado.modo === 'todas' ? ', una en cada hoja' : ''}.`;
-  } else if (estado.fijo) {
-    resumen = n === 1 ? `El estudio marcó dónde firmar (hoja ${c.hoja}).` : `El estudio marcó ${n} lugares para firmar. Firmá en cada uno.`;
+        ? `El cliente firmará una vez, en la hoja ${c.hoja}.`
+        : `El cliente firmará ${n} veces${estado.modo === 'todas' ? ', una por hoja' : ''}.`;
   } else {
     resumen =
       n === 1
-        ? `Vas a firmar una vez, en la hoja ${c.hoja}.`
-        : `Vas a firmar ${n} veces${estado.modo === 'todas' ? ', una en cada hoja' : ''}: cada firma se hace por separado.`;
+        ? `Una firma, en la hoja ${c.hoja}.`
+        : `${n} firmas${estado.modo === 'todas' ? ', una por hoja' : ''}. Cada una se realiza por separado.`;
   }
-  if (!estado.preparar && n > 1) resumen += ` Llevás ${hechas} de ${n}.`;
+  if (!estado.preparar && n > 1) resumen += ` Realizadas: ${hechas} de ${n}.`;
   $('resumen').textContent = resumen;
 
   // Fichas (una por firma)
@@ -577,7 +577,7 @@ function refrescar() {
   }
   estado.casilleros.forEach((x, i) => {
     const b = fichas.children[i] as HTMLButtonElement;
-    b.textContent = !estado.preparar && x.trazos.length ? `✓ ${i + 1}` : String(i + 1);
+    b.textContent = String(i + 1);
     b.title = `Firma ${i + 1} · hoja ${x.hoja}`;
     b.classList.toggle('hecha', !estado.preparar && x.trazos.length > 0);
     b.classList.toggle('actual', i === estado.actual);
@@ -593,7 +593,7 @@ function refrescar() {
   sel.hidden = !hojaElegible;
   sel.value = String(c.hoja);
   $('cas-hoja-fija').hidden = hojaElegible;
-  $('cas-hoja-fija').textContent = `· hoja ${c.hoja} de ${total}`;
+  $('cas-hoja-fija').textContent = `Hoja ${c.hoja} de ${total}`;
   $<HTMLButtonElement>('cas-ant').hidden = $<HTMLButtonElement>('cas-sig').hidden = n === 1;
   $<HTMLButtonElement>('cas-ant').disabled = estado.actual === 0;
   $<HTMLButtonElement>('cas-sig').disabled = estado.actual === n - 1;
@@ -635,19 +635,19 @@ function refrescar() {
 
   // Recuadro de firma
   const titulo =
-    n === 1 ? 'Firmá acá' : estado.desdeLink ? `Firma ${k} de ${n}` : `Firma ${k} de ${n} · va en la hoja ${c.hoja}`;
-  if (!estado.preparar) $('titulo-firmas').textContent = n === 1 ? 'Tu firma' : 'Tus firmas';
+    n === 1 ? 'Firme en el recuadro' : estado.desdeLink ? `Firma ${k} de ${n}` : `Firma ${k} de ${n} · hoja ${c.hoja}`;
+  if (!estado.preparar) $('titulo-firmas').textContent = n === 1 ? 'Firma' : 'Firmas';
   $('pad-titulo').textContent = titulo;
   $('pf-titulo').textContent = titulo;
   const ultima = estado.actual === n - 1;
   $('siguiente').hidden = $('pista-enter').hidden = n === 1;
-  $('siguiente').textContent = ultima ? 'Listo ✓' : 'Siguiente firma ›';
-  $('pf-sig').textContent = ultima ? 'Listo ✓' : 'Siguiente firma ›';
+  $('siguiente').textContent = ultima ? 'Finalizar' : 'Siguiente firma';
+  $('pf-sig').textContent = ultima ? 'Finalizar' : 'Siguiente firma';
   $('pf-ant').hidden = n === 1;
   $<HTMLButtonElement>('pf-ant').disabled = estado.actual === 0;
 
   // Paso final
-  $('descargar-imagen').textContent = n === 1 ? 'Descargar la firma como imagen' : 'Descargar las firmas como imágenes (ZIP)';
+  $('descargar-imagen').textContent = n === 1 ? 'Descargar firma (PNG)' : 'Descargar firmas (ZIP)';
   actualizarHojas();
 }
 
@@ -758,7 +758,7 @@ function prepararEditor() {
   $('quitar').addEventListener('click', () => {
     if (estado.casilleros.length < 2) return;
     const c = actual();
-    if (c.trazos.length && !confirm('¿Quitar esta firma? Ya está hecha.')) return;
+    if (c.trazos.length && !confirm('Esta firma ya fue realizada. ¿Desea quitarla?')) return;
     liberar(c);
     estado.casilleros.splice(estado.actual, 1);
     estado.actual = Math.min(estado.actual, estado.casilleros.length - 1);
@@ -857,7 +857,7 @@ function avisoPad(msg: string) {
   clearTimeout(Number(pista.dataset.t));
   pista.dataset.t = String(
     window.setTimeout(() => {
-      pista.textContent = 'También podés apretar Enter.';
+      pista.textContent = 'Puede presionar Enter para continuar.';
       pista.classList.remove('alerta');
       refrescar();
     }, 2500),
@@ -875,7 +875,7 @@ function siguiente() {
   const c = actual();
   if (!c) return;
   if (!c.trazos.length) {
-    avisoPad('✍️ Primero firmá en el recuadro.');
+    avisoPad('Firme en el recuadro antes de continuar.');
     return;
   }
   const n = estado.casilleros.length;
@@ -1055,34 +1055,34 @@ async function firmar() {
   if (sinFirmar.length) {
     falta.textContent =
       estado.casilleros.length === 1
-        ? 'Falta tu firma.'
+        ? 'Falta la firma.'
         : sinFirmar.length === 1
-          ? `Falta una firma: ${lista(sinFirmar)}.`
-          : `Faltan ${sinFirmar.length} firmas: ${lista(sinFirmar)}.`;
+          ? `Falta la firma ${lista(sinFirmar)}.`
+          : `Faltan las firmas ${lista(sinFirmar)}.`;
     seleccionar(sinFirmar[0] - 1);
     $('zona-pad').scrollIntoView({ behavior: 'smooth', block: 'center' });
     return;
   }
-  if (!texto().trim() && !confirm('No escribiste tus datos debajo de la firma. ¿Firmar igual?')) {
+  if (!texto().trim() && !confirm('No completó los datos del firmante. ¿Desea firmar de todos modos?')) {
     $('texto').focus();
     return;
   }
   const boton = $<HTMLButtonElement>('firmar');
   boton.disabled = true;
-  boton.textContent = 'Firmando…';
+  boton.textContent = 'Procesando…';
   try {
     await asegurarMascaras();
     clearTimeout(temporizador);
     await componer(estado.casilleros, new Date());
     const firmas = estado.casilleros.map((c) => {
-      if (!c.imagen || !c.ubic) throw new Error('No se pudo armar la imagen de la firma.');
+      if (!c.imagen || !c.ubic) throw new Error('No se pudo generar la imagen de la firma.');
       return { hoja: c.hoja, png: c.imagen.png, aspecto: c.imagen.aspecto, ubicacion: c.ubic };
     });
     const pdf = await estamparFirmas(estado.original, firmas);
     // Con link: se guarda cifrado para que el estudio lo descargue desde su panel.
     let errorEnvio: string | null = null;
     if (estado.envio) {
-      boton.textContent = 'Enviando al estudio…';
+      boton.textContent = 'Enviando…';
       const devolucion: Devolucion = {
         titulo: estado.envio.titulo,
         archivo: estado.nombre,
@@ -1094,7 +1094,7 @@ async function firmar() {
         const paquete = await cifrarDocumento(pdf, devolucion, estado.envio.clave);
         await estado.envio.gh.guardar(rutaFirmado(estado.envio.id), paquete, `Documento firmado ${estado.envio.id}`);
       } catch (e) {
-        errorEnvio = e instanceof Error ? e.message : 'error desconocido';
+        errorEnvio = (e instanceof Error ? e.message : 'error desconocido').replace(/\.$/, '');
       }
     }
     await descartarFirmado();
@@ -1113,13 +1113,13 @@ async function firmar() {
     const enviado = !!estado.envio && !errorEnvio;
     $('resultado-texto').hidden = !!errorEnvio;
     $('resultado-texto').textContent = enviado
-      ? '✅ ¡Listo! El documento firmado ya le llegó al estudio. No hace falta que lo mandes.'
-      : '✅ ¡Listo! El documento quedó firmado. Descargalo o compartilo.';
+      ? 'Documento firmado y enviado al estudio. No es necesario reenviarlo.'
+      : 'Documento firmado.';
     $('resultado-error').hidden = !errorEnvio;
     $('resultado-error').textContent = errorEnvio
-      ? `⚠️ El documento quedó firmado, pero no se pudo enviar al estudio (${errorEnvio}). Descargalo y mandáselo por WhatsApp o mail.`
+      ? `El documento fue firmado, pero no pudo enviarse al estudio (${errorEnvio}). Descárguelo y envíelo por correo electrónico o WhatsApp.`
       : '';
-    $('descargar').textContent = enviado ? 'Descargar una copia' : '⬇ Descargar PDF firmado';
+    $('descargar').textContent = enviado ? 'Descargar copia' : 'Descargar PDF firmado';
     $('descargar').classList.toggle('principal', !enviado);
     $('compartir').hidden = enviado || !puedeCompartir;
     $('descargar-imagen').hidden = !!estado.envio;
@@ -1127,7 +1127,7 @@ async function firmar() {
     $('resultado').scrollIntoView({ behavior: 'smooth', block: 'center' });
     document.querySelector(`#hojas [data-hoja="${firmas[0].hoja}"]`)?.scrollIntoView({ block: 'nearest' });
   } catch (e) {
-    mostrarError(e instanceof Error ? `No se pudo firmar: ${e.message}` : 'No se pudo firmar el documento.');
+    mostrarError(e instanceof Error ? `No se pudo firmar el documento: ${e.message}` : 'No se pudo firmar el documento.');
   } finally {
     boton.disabled = false;
     boton.textContent = textoBotonFirmar();
@@ -1135,7 +1135,7 @@ async function firmar() {
 }
 
 function textoBotonFirmar() {
-  return estado.envio ? 'Firmar y enviar al estudio' : 'Firmar el documento';
+  return estado.envio ? 'Firmar y enviar al estudio' : 'Firmar documento';
 }
 
 function prepararResultado() {
@@ -1181,7 +1181,7 @@ function prepararEnvio() {
   };
   $('env-generar').addEventListener('click', async () => {
     if (!conexion()) {
-      estadoEnvio('Primero conectá GitHub en el Panel del estudio (botón arriba a la derecha).', 'error');
+      estadoEnvio('Primero configure la conexión en el panel del estudio.', 'error');
       return;
     }
     if (!estado.original || !estado.visor) return;
@@ -1201,15 +1201,15 @@ function prepararEnvio() {
         fijo: true,
         creado: new Date().toISOString(),
       };
-      estadoEnvio('Cifrando y subiendo…');
+      estadoEnvio('Cifrando y subiendo el documento…');
       const { link } = await publicarDocumento(estado.original, cabecera, location.origin + location.pathname);
       $<HTMLInputElement>('env-link').value = link;
       $<HTMLAnchorElement>('env-abrir').href = link;
       $<HTMLAnchorElement>('env-whatsapp').href = `https://wa.me/?text=${encodeURIComponent(
-        `Hola, te mando el documento «${titulo}» para que lo firmes desde el celular: ${link}`,
+        `Le envío el documento «${titulo}» para su firma. Puede firmarlo desde el teléfono en el siguiente enlace: ${link}`,
       )}`;
       $('env-resultado').hidden = false;
-      estadoEnvio(`✅ Link generado (${firmas.length === 1 ? '1 firma' : `${firmas.length} firmas`}). Copialo y mandáselo al cliente.`, 'ok');
+      estadoEnvio(`Enlace generado (${firmas.length === 1 ? '1 firma' : `${firmas.length} firmas`}).`, 'ok');
     } catch (e) {
       estadoEnvio(e instanceof Error ? e.message : 'No se pudo subir.', 'error');
     } finally {
@@ -1224,8 +1224,8 @@ function prepararEnvio() {
       $<HTMLInputElement>('env-link').select();
       document.execCommand('copy');
     }
-    $('env-copiar').textContent = '¡Copiado!';
-    setTimeout(() => ($('env-copiar').textContent = 'Copiar link'), 1500);
+    $('env-copiar').textContent = 'Copiado';
+    setTimeout(() => ($('env-copiar').textContent = 'Copiar enlace'), 1500);
   });
   $('env-link').addEventListener('focus', () => $<HTMLInputElement>('env-link').select());
   $('env-otro').addEventListener('click', () => location.reload());
@@ -1233,20 +1233,21 @@ function prepararEnvio() {
 
 function modoPreparar() {
   document.title = 'Preparar documento · Firma de documentos';
-  $('marca-sub').textContent = ' · Estudio';
+  $('marca-sub').textContent = 'Estudio';
   $('volver-panel').hidden = false;
-  $('titulo').textContent = 'Preparar un documento para firmar';
+  $('antetitulo').textContent = 'Panel del estudio';
+  $('titulo').textContent = 'Preparar documento';
   $('bajada').textContent =
-    'Elegí el PDF, marcá dónde tiene que firmar el cliente (se ubica solo debajo del texto; podés moverlo) y generá el link.';
-  $('elegir-texto').textContent = 'Elegí el PDF que va a firmar el cliente';
-  $('elegir-nota').textContent = '🔒 El PDF se cifra en este navegador antes de subirse.';
-  $('pie-privacidad').textContent = 'El documento se cifra antes de subirse: sólo se abre con el link.';
+    'Seleccione el PDF e indique dónde debe firmar el cliente. Las firmas se ubican debajo del texto y pueden moverse o cambiar de tamaño.';
+  $('elegir-texto').textContent = 'Seleccionar el PDF a firmar';
+  $('elegir-nota').textContent = 'El documento se cifra en este navegador antes de subirse.';
+  $('pie-privacidad').textContent = 'Los documentos se cifran antes de subirse y sólo pueden abrirse con su enlace.';
   $('paso-datos').hidden = true;
   $('zona-pad').hidden = true;
   $('paso-final').hidden = true;
   $('paso-enviar').hidden = false;
   $('num-firmas').textContent = '1';
-  $('titulo-firmas').textContent = 'Dónde firma el cliente';
+  $('titulo-firmas').textContent = 'Ubicación de las firmas';
 }
 
 /* ───────────── Inicio ───────────── */
@@ -1254,7 +1255,7 @@ function modoPreparar() {
 async function abrirArchivo(f: File | undefined) {
   if (!f) return;
   if (f.type && f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) {
-    mostrarError('El archivo tiene que ser un PDF.');
+    mostrarError('El archivo debe ser un PDF.');
     return;
   }
   cargando('Abriendo el documento…');

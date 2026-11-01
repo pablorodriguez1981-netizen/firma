@@ -1,4 +1,4 @@
-# Firma de documentos ✍️
+# Firma de documentos
 
 Página para que un cliente firme a mano un PDF desde el celular o la computadora.
 
@@ -8,10 +8,10 @@ Página para que un cliente firme a mano un PDF desde el celular o la computador
 
 ## Cómo funciona
 
-1. **Preparás el documento** desde el panel: elegís el PDF y cuántas firmas lleva (una, una distinta en cada hoja, o donde marques). Cada firma se ubica sola **debajo de donde termina el texto** de la hoja (analiza la hoja, así que anda también con escaneados, e ignora el número de página del pie); si no entra, prueba más chica o busca otro lugar libre y, si no hay ninguno, lo avisa con ⚠️. Podés mover cada firma, alinearla y cambiarle el tamaño.
+1. **Preparás el documento** desde el panel: elegís el PDF y cuántas firmas lleva (una, una distinta en cada hoja, o donde marques). Cada firma se ubica sola **debajo de donde termina el texto** de la hoja (analiza la hoja, así que anda también con escaneados, e ignora el número de página del pie); si no entra, prueba más chica o busca otro lugar libre y, si no hay ninguno, lo indica. Podés mover cada firma, alinearla y cambiarle el tamaño.
 2. **Le mandás el link al cliente** (WhatsApp o mail).
-3. **El cliente sólo ve el documento, un campo para sus datos** (nombre, DNI, lo que quiera, en varias líneas) **y el recuadro para firmar** con el dedo. Si son varias firmas, firma cada una por separado (Firma 1 → Siguiente/Enter → Firma 2 → …): cada firma es distinta, no una copia. Toca «Firmar y enviar al estudio».
-4. **El documento firmado te llega al panel**: aparece «✅ Firmado», con quién firmó, y lo descargás. El cliente no tiene que mandarte nada (igual puede bajarse una copia). Si no se pudiera guardar, se le avisa y puede descargarlo y mandártelo.
+3. **El cliente sólo ve el documento, un campo para sus datos** (nombre, DNI, lo que quiera, en varias líneas) **y el recuadro para firmar** con el dedo. Si son varias firmas, firma cada una por separado (Firma 1 → Siguiente firma o Enter → Firma 2 → …): cada firma es distinta, no una copia. Al final toca «Firmar y enviar al estudio».
+4. **El documento firmado te llega al panel**: aparece como «Firmado», con los datos del firmante, y lo descargás. El cliente no tiene que mandarte nada (igual puede bajarse una copia). Si no se pudiera guardar, se le avisa y puede descargarlo y mandártelo.
 
 Cada firma, con los datos debajo y la aclaración en chiquito «Firmado digitalmente el … a las … h», se inserta como imagen en el PDF. Las hojas giradas o de distinto tamaño se firman en la posición correcta.
 
@@ -57,3 +57,7 @@ src/
   cifrado.ts, enlace.ts, github.ts, almacen.ts   links cifrados y documentos en firma-datos
   zip.ts              ZIP de las imágenes de las firmas
 ```
+
+## Diseño
+
+Tipografías Source Serif 4 (títulos) e IBM Plex Sans (texto), incluidas en la página (sin servicios externos). Paleta: azul marino, papel cálido y detalles en bronce; modo oscuro automático. El cliente ve los textos en trato de «usted».

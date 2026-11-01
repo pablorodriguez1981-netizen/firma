@@ -42,7 +42,7 @@ function mostrarConexion() {
   const chip = $('chip-conexion');
   chip.textContent = gh ? 'Conectado' : 'Sin conectar';
   chip.dataset.tipo = gh ? 'ok' : '';
-  if (gh) $('conexion-detalle').textContent = `Documentos en: ${gh.repo}`;
+  if (gh) $('conexion-detalle').textContent = `Repositorio de documentos: ${gh.repo}`;
   const repo = leer(CLAVE_REPO) ?? repoPredeterminado ?? '';
   $<HTMLInputElement>('repo').value = repo;
   const nombre = repo.split('/')[1] || 'firma-datos';
@@ -53,11 +53,11 @@ function mostrarConexion() {
 async function conectar() {
   const repo = $<HTMLInputElement>('repo').value.trim().replace(/^https:\/\/github\.com\//, '').replace(/\/$/, '');
   const token = $<HTMLInputElement>('token').value.trim();
-  if (!esRepoValido(repo)) return estado('estado-conexion', 'Escribí el repositorio como usuario/firma-datos.', 'error');
-  if (!token) return estado('estado-conexion', 'Pegá el token de GitHub.', 'error');
+  if (!esRepoValido(repo)) return estado('estado-conexion', 'Indique el repositorio con el formato usuario/firma-datos.', 'error');
+  if (!token) return estado('estado-conexion', 'Ingrese el token de GitHub.', 'error');
   const boton = $<HTMLButtonElement>('conectar');
   boton.disabled = true;
-  estado('estado-conexion', 'Probando…');
+  estado('estado-conexion', 'Verificando…');
   try {
     const gh = new GitHub(token, repo);
     const { privado, escritura } = await gh.verificar();
@@ -69,8 +69,8 @@ async function conectar() {
     estado(
       'estado-conexion',
       privado
-        ? '✅ Conectado. Ya podés mandar documentos.'
-        : '✅ Conectado. Recomendado: hacé privado el repositorio de documentos (Settings › Danger Zone › Change visibility). Igual todo va cifrado.',
+        ? 'Conexión verificada.'
+        : 'Conexión verificada. Se recomienda que el repositorio de documentos sea privado (Settings › Danger Zone › Change visibility).',
       'ok',
     );
     void actualizarEstados();
@@ -89,7 +89,7 @@ function mostrarElegidos() {
   $('elegidos').replaceChildren(
     ...elegidos.map((f) => {
       const li = document.createElement('li');
-      li.textContent = `📄 ${f.name} · ${(f.size / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
+      li.textContent = `${f.name} — ${(f.size / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
       return li;
     }),
   );
@@ -98,14 +98,14 @@ function mostrarElegidos() {
 function elegir(lista: FileList | null | undefined) {
   if (!lista) return;
   elegidos = Array.from(lista).filter((f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
-  if (lista.length && !elegidos.length) estado('estado-subida', 'Elegí archivos PDF.', 'error');
+  if (lista.length && !elegidos.length) estado('estado-subida', 'Seleccione archivos PDF.', 'error');
   else estado('estado-subida', '');
   mostrarElegidos();
 }
 
 async function subir() {
-  if (!conexion()) return estado('estado-subida', 'Primero conectá GitHub (paso 1).', 'error');
-  if (!elegidos.length) return estado('estado-subida', 'Elegí al menos un PDF.', 'error');
+  if (!conexion()) return estado('estado-subida', 'Primero configure la conexión (paso 1).', 'error');
+  if (!elegidos.length) return estado('estado-subida', 'Seleccione al menos un PDF.', 'error');
   const boton = $<HTMLButtonElement>('subir');
   boton.disabled = true;
   const tituloComun = $<HTMLInputElement>('titulo').value.trim();
@@ -117,19 +117,19 @@ async function subir() {
     for (const [i, f] of elegidos.entries()) {
       const prefijo = elegidos.length > 1 ? `(${i + 1}/${elegidos.length}) ` : '';
       if (f.size > TAMANO_MAXIMO) {
-        avisos.push(`«${f.name}» pesa más de 40 MB: no se subió.`);
+        avisos.push(`«${f.name}» supera los 40 MB y no se subió.`);
         continue;
       }
-      estado('estado-subida', `${prefijo}Revisando «${f.name}»…`);
+      estado('estado-subida', `${prefijo}Verificando «${f.name}»…`);
       const pdf = new Uint8Array(await f.arrayBuffer());
       try {
         const info = await leerInfoPdf(pdf);
-        if (info.firmasDigitales) avisos.push(`«${f.name}» tiene firmas digitales: al firmarlo el cliente, dejan de verificarse.`);
+        if (info.firmasDigitales) avisos.push(`«${f.name}» contiene firmas digitales: dejarán de verificarse cuando el cliente lo firme.`);
       } catch (e) {
         avisos.push(
           e instanceof PdfProtegidoError
-            ? `«${f.name}» está protegido con contraseña o contra cambios: no se puede firmar. Guardalo de nuevo sin protección.`
-            : `«${f.name}» no parece un PDF válido: no se subió.`,
+            ? `«${f.name}» está protegido con contraseña o contra modificaciones y no puede firmarse.`
+            : `«${f.name}» no es un PDF válido y no se subió.`,
         );
         continue;
       }
@@ -139,7 +139,7 @@ async function subir() {
       hechos++;
       mostrarLista();
     }
-    const resumen = hechos ? `✅ ${hechos === 1 ? 'Link generado' : `${hechos} links generados`}: copialo en «Documentos» y mandáselo al cliente.` : '';
+    const resumen = hechos ? `${hechos === 1 ? 'Enlace generado' : `${hechos} enlaces generados`}. Puede copiarlo en «Documentos enviados».` : '';
     estado('estado-subida', [resumen, ...avisos].filter(Boolean).join('\n'), avisos.length && !hechos ? 'error' : 'ok');
     if (hechos) {
       elegidos = [];
@@ -168,7 +168,7 @@ async function actualizarEstados() {
   }
   const boton = $<HTMLButtonElement>('actualizar');
   boton.disabled = true;
-  estado('estado-lista', 'Buscando documentos firmados…');
+  estado('estado-lista', 'Consultando…');
   try {
     const archivos = await gh.listar('firmados');
     firmados = new Set(archivos.map((a) => a.nombre.replace(/\.firma$/, '')));
@@ -193,7 +193,7 @@ async function copiar(texto: string, b: HTMLButtonElement) {
     t.remove();
   }
   const antes = b.textContent;
-  b.textContent = '¡Copiado!';
+  b.textContent = 'Copiado';
   setTimeout(() => (b.textContent = antes), 1500);
 }
 
@@ -229,14 +229,14 @@ async function descargarFirmado(l: LinkGuardado, b: HTMLButtonElement) {
 }
 
 async function borrar(l: LinkGuardado) {
-  if (!confirm(`¿Borrar «${l.titulo}»? Se borran el documento y, si está, el firmado. El link deja de funcionar.`)) return;
+  if (!confirm(`¿Eliminar «${l.titulo}»? Se eliminarán el documento y, si existe, la versión firmada. El enlace dejará de funcionar.`)) return;
   const token = leer(CLAVE_TOKEN);
   try {
     if (token) {
       const gh = new GitHub(token, l.repo);
       await gh.borrar(rutaDocumento(l.id), `Borrar documento ${l.id}`);
       await gh.borrar(rutaFirmado(l.id), `Borrar documento firmado ${l.id}`);
-    } else if (!confirm('No hay token guardado: sólo se va a quitar de esta lista (los archivos cifrados quedan en GitHub). ¿Seguir?')) {
+    } else if (!confirm('No hay un token guardado: sólo se quitará de esta lista y los archivos cifrados quedarán en GitHub. ¿Desea continuar?')) {
       return;
     }
     guardarLinks(links().filter((x) => x.id !== l.id));
@@ -263,7 +263,7 @@ function mostrarLista() {
       const chip = document.createElement('span');
       chip.className = 'estado-chip';
       chip.dataset.tipo = firmado ? 'ok' : '';
-      chip.textContent = firmados === null ? '…' : firmado ? '✅ Firmado' : '⏳ Esperando firma';
+      chip.textContent = firmados === null ? '—' : firmado ? 'Firmado' : 'Pendiente';
       fila.append(t, chip);
       const f = document.createElement('small');
       const firmas = l.firmas ? ` · ${l.firmas === 1 ? '1 firma' : `${l.firmas} firmas`}` : '';
@@ -272,25 +272,25 @@ function mostrarLista() {
       if (l.firmante) {
         const quien = document.createElement('small');
         quien.className = 'link-firmante';
-        quien.textContent = `Firmó: ${l.firmante.split('\n').filter(Boolean).slice(0, 2).join(' · ')}`;
+        quien.textContent = `Firmante: ${l.firmante.split('\n').filter(Boolean).slice(0, 2).join(' · ')}`;
         cab.append(quien);
       }
       const acciones = document.createElement('div');
       acciones.className = 'fila-botones';
       if (firmado) {
-        const bBajar = boton('⬇ Descargar firmado', 'boton chico principal');
+        const bBajar = boton('Descargar firmado', 'boton chico principal');
         bBajar.addEventListener('click', () => void descargarFirmado(l, bBajar));
         acciones.append(bBajar);
       }
-      const bCopiar = boton('Copiar link', firmado ? 'boton chico' : 'boton chico principal');
+      const bCopiar = boton('Copiar enlace', firmado ? 'boton chico' : 'boton chico principal');
       bCopiar.addEventListener('click', () => void copiar(l.link, bCopiar));
       const wa = document.createElement('a');
       wa.className = 'boton chico';
       wa.target = '_blank';
       wa.rel = 'noopener';
       wa.textContent = 'WhatsApp';
-      wa.href = `https://wa.me/?text=${encodeURIComponent(`Hola, te mando el documento «${l.titulo}» para que lo firmes desde el celular: ${l.link}`)}`;
-      const bBorrar = boton('Borrar', 'boton chico peligro');
+      wa.href = `https://wa.me/?text=${encodeURIComponent(`Le envío el documento «${l.titulo}» para su firma. Puede firmarlo desde el teléfono en el siguiente enlace: ${l.link}`)}`;
+      const bBorrar = boton('Eliminar', 'boton chico peligro');
       bBorrar.addEventListener('click', () => void borrar(l));
       acciones.append(bCopiar, wa, bBorrar);
       li.append(cab, acciones);
@@ -318,10 +318,10 @@ function iniciar() {
   $('conectar').addEventListener('click', () => void conectar());
   $('token').addEventListener('keydown', (e) => e.key === 'Enter' && void conectar());
   $('olvidar').addEventListener('click', () => {
-    if (!confirm('¿Desconectar? Se borra el token de este navegador (los links ya enviados siguen funcionando).')) return;
+    if (!confirm('¿Desconectar? Se eliminará el token de este navegador. Los enlaces ya enviados seguirán funcionando.')) return;
     guardar(CLAVE_TOKEN, null);
     mostrarConexion();
-    estado('estado-conexion', 'Token borrado de este navegador.');
+    estado('estado-conexion', 'Token eliminado de este navegador.');
   });
   $('actualizar').addEventListener('click', () => void actualizarEstados());
   // Al volver a la pestaña, se revisa si llegaron firmados nuevos.

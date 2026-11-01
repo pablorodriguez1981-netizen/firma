@@ -17,11 +17,11 @@ export class ErrorGitHub extends Error {
 }
 
 function mensajeDeError(estado: number, detalle: string): string {
-  if (estado === 401) return 'El permiso de GitHub no es válido o venció.';
-  if (estado === 403) return 'El token no tiene permiso para escribir en el repositorio de documentos (hace falta "Contents: Read and write").';
-  if (estado === 404) return 'No se encontró el repositorio de documentos (o el token no tiene acceso a él).';
-  if (estado === 409) return 'GitHub estaba ocupado guardando otro archivo. Probá de nuevo.';
-  if (estado === 413 || estado === 422) return `GitHub rechazó el archivo: ${detalle || 'revisá que no sea demasiado grande'}.`;
+  if (estado === 401) return 'La autorización de GitHub no es válida o venció.';
+  if (estado === 403) return 'El token no tiene permiso de escritura en el repositorio de documentos (Contents: Read and write).';
+  if (estado === 404) return 'No se encontró el repositorio de documentos o el token no tiene acceso.';
+  if (estado === 409) return 'GitHub estaba procesando otra operación. Intente nuevamente.';
+  if (estado === 413 || estado === 422) return `GitHub rechazó el archivo: ${detalle || 'puede ser demasiado grande'}.`;
   return `Error de GitHub (${estado})${detalle ? `: ${detalle}` : ''}.`;
 }
 
@@ -62,7 +62,7 @@ export class GitHub {
         cache: 'no-store',
       });
     } catch {
-      throw new ErrorGitHub('No hay conexión con GitHub. Revisá internet y probá de nuevo.', 0);
+      throw new ErrorGitHub('No hay conexión con GitHub. Verifique la conexión a internet e intente nuevamente.', 0);
     }
     if (!r.ok) {
       let detalle = '';

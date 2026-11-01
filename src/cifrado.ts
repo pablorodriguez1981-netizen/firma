@@ -58,7 +58,7 @@ export function desdeBase64Url(texto: string): Uint8Array {
 
 export class LinkInvalidoError extends Error {
   constructor() {
-    super('El link está incompleto o el documento está dañado.');
+    super('El enlace está incompleto o el documento está dañado.');
     this.name = 'LinkInvalidoError';
   }
 }

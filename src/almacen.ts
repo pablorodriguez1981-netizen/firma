@@ -74,7 +74,7 @@ export function conexion(): GitHub | null {
 export async function publicarDocumento(pdf: Uint8Array, cabecera: Cabecera, paginaCliente: string): Promise<LinkGuardado> {
   const token = leer(CLAVE_TOKEN);
   const repo = leer(CLAVE_REPO);
-  if (!token || !repo) throw new Error('Primero conectá GitHub en el panel del estudio.');
+  if (!token || !repo) throw new Error('Primero configure la conexión en el panel del estudio.');
   const gh = new GitHub(token, repo);
   const clave = generarClave();
   const id = generarId();
