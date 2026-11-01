@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Panel del estudio · Firma de documentos</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="theme-color" content="#16325c" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9C%8D%EF%B8%8F%3C/text%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <header class="barra">
+      <div class="barra-in">
+        <span class="marca"><span aria-hidden="true">✍️</span> Firma de documentos · <span class="marca-sub">Panel del estudio</span></span>
+        <a class="boton chico claro" href="../">Página de firma</a>
+      </div>
+    </header>
+
+    <main class="contenedor angosto">
+      <section class="intro">
+        <h1>Mandá documentos para firmar</h1>
+        <p class="bajada">
+          Subí el PDF, copiá el link y mandáselo al cliente (por WhatsApp o mail). El cliente lo abre en el celular, escribe sus
+          datos, firma a mano y te devuelve el PDF firmado.
+        </p>
+      </section>
+
+      <section class="tarjeta" id="conexion">
+        <h2><span class="num">1</span> Conectar con GitHub <small class="estado-chip" id="chip-conexion">Sin conectar</small></h2>
+        <div id="conexion-form">
+          <p class="ayuda">
+            Los PDF se guardan <strong>cifrados</strong> en tu repositorio de GitHub (nadie puede leerlos sin el link). Para subirlos
+            desde acá hace falta un token con permiso sobre ese repositorio. Se hace una sola vez y queda guardado sólo en este
+            navegador.
+          </p>
+          <ol class="lista-pasos">
+            <li>Abrí <a id="link-token" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub › Generar token</a> (fine-grained token).</li>
+            <li><strong>Token name</strong>: «Firma de documentos». <strong>Expiration</strong>: la que prefieras (por ejemplo, 1 año).</li>
+            <li><strong>Repository access</strong> › <em>Only select repositories</em> › elegí <code id="repo-sugerido">tu repositorio</code>.</li>
+            <li><strong>Permissions</strong> › <em>Repository permissions</em> › <strong>Contents</strong>: <em>Read and write</em>.</li>
+            <li><strong>Generate token</strong>, copialo y pegalo acá abajo.</li>
+          </ol>
+          <label class="campo">
+            <span>Repositorio</span>
+            <input id="repo" placeholder="usuario/repositorio" autocomplete="off" spellcheck="false" />
+          </label>
+          <label class="campo">
+            <span>Token</span>
+            <input id="token" type="password" placeholder="github_pat_…" autocomplete="off" spellcheck="false" />
+          </label>
+          <div class="fila-botones">
+            <button type="button" class="boton principal" id="conectar">Guardar y probar</button>
+          </div>
+        </div>
+        <div id="conexion-ok" class="fila-botones" hidden>
+          <span class="ayuda" id="conexion-detalle"></span>
+          <button type="button" class="boton chico" id="olvidar">Desconectar</button>
+        </div>
+        <p id="estado-conexion" class="estado" role="status"></p>
+      </section>
+
+      <section class="tarjeta destacada">
+        <h2><span class="num">2</span> Preparar un documento y marcar dónde firma</h2>
+        <p class="ayuda">
+          Elegís el PDF, decidís si el cliente firma una vez, en todas las hojas (una firma distinta por hoja) o donde vos
+          marques. Cada firma se ubica sola debajo del texto y la podés mover. Después generás el link.
+        </p>
+        <a class="boton principal grande" href="../#preparar">Preparar documento ›</a>
+      </section>
+
+      <section class="tarjeta" id="subir-seccion">
+        <h2><span class="num">3</span> Subida rápida <small class="sub-h2">(sin marcar lugares: el cliente elige)</small></h2>
+        <label class="soltar" id="soltar">
+          <input type="file" id="archivos" accept="application/pdf,.pdf" multiple />
+          <span class="soltar-icono" aria-hidden="true">📄</span>
+          <strong>Elegí uno o varios PDF</strong>
+          <span>o arrastralos acá · se genera un link por cada archivo</span>
+        </label>
+        <ul id="elegidos" class="elegidos"></ul>
+        <label class="campo">
+          <span>Título que ve el cliente <small>(opcional; si no, el nombre del archivo)</small></span>
+          <input id="titulo" placeholder="Ej.: Poder especial" />
+        </label>
+        <label class="campo">
+          <span>Indicaciones para el cliente <small>(opcional)</small></span>
+          <textarea id="indicaciones" rows="3" placeholder="Ej.: Firmá todas las hojas y mandámelo por WhatsApp."></textarea>
+        </label>
+        <fieldset class="campo">
+          <legend>Dónde firmar <small>(sugerencia; el cliente lo puede cambiar)</small></legend>
+          <div class="alcances">
+            <label class="alcance"><input type="radio" name="sugerencia" value="ultima" checked /><span><strong>Una firma</strong><small>En la última hoja</small></span></label>
+            <label class="alcance"><input type="radio" name="sugerencia" value="todas" /><span><strong>Todas las hojas</strong><small>Una firma distinta en cada hoja</small></span></label>
+          </div>
+        </fieldset>
+        <button type="button" class="boton principal grande" id="subir">Subir y generar link</button>
+        <p id="estado-subida" class="estado" role="status"></p>
+      </section>
+
+      <section class="tarjeta">
+        <h2><span class="num">4</span> Links generados</h2>
+        <p class="ayuda">
+          Cada link abre su documento. La clave para leerlo está sólo en el link: si lo perdés, subí el PDF de nuevo. Cuando el
+          cliente termine, podés borrarlo.
+        </p>
+        <ul id="lista" class="lista-links"></ul>
+        <p id="lista-vacia" class="ayuda vacia">Todavía no generaste links en este navegador.</p>
+      </section>
+
+      <section class="tarjeta">
+        <h2>¿El cliente está con vos?</h2>
+        <p class="ayuda">
+          Abrí la <a href="../">página de firma</a>, elegí el PDF desde este dispositivo y pasale el teléfono o la tablet. No hace
+          falta subir nada.
+        </p>
+      </section>
+    </main>
+
+    <footer class="pie">
+      <p>El token y la lista de links quedan guardados sólo en este navegador.</p>
+    </footer>
+
+    <script type="module" src="/src/estudio.ts"></script>
+  </body>
+</html>

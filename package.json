@@ -1,0 +1,25 @@
+{
+  "name": "firma",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Firma a mano de documentos PDF desde el celular: el estudio sube el PDF cifrado y el cliente firma con el dedo.",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json"
+  },
+  "dependencies": {
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.5.438",
+    "signature_pad": "^5.1.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.0",
+    "vitest": "^3.2.7"
+  }
+}
