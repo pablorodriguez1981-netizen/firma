@@ -22,7 +22,7 @@ function recursosPdf(): Plugin {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
-    "connect-src 'self' data: blob: https://api.github.com https://raw.githubusercontent.com",
+    "connect-src 'self' data: blob: https://api.github.com",
     "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",

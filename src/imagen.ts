@@ -8,6 +8,7 @@ export interface OpcionesImagen {
   /** Firma ya dibujada y recortada (de `rasterizarFirma`), o null si no hay. */
   firma: HTMLCanvasElement | null;
   texto: string;
+  /** Aclaración chica debajo de los datos (leyenda y fecha). */
   fecha: string | null;
   color: string;
 }
@@ -198,13 +199,15 @@ export async function componerImagen({ firma, texto, fecha, color }: OpcionesIma
  * Proporción aproximada (ancho / alto) de la imagen antes de que haya una
  * firma dibujada, para reservarle lugar en la hoja.
  */
-export function aspectoEstimado(texto: string, conFecha: boolean): number {
+export function aspectoEstimado(texto: string): number {
   const lineas = texto.trim() ? texto.trim().split('\n').length : 0;
-  const alto = 2 * MARGEN + 230 + 20 + lineas * TAM_TEXTO * 1.28 + (conFecha ? 8 + TAM_FECHA * 1.3 : 0);
+  const alto = 2 * MARGEN + 230 + 20 + lineas * TAM_TEXTO * 1.28 + 8 + TAM_FECHA * 1.3;
   return 760 / alto;
 }
 
-export function fechaDeFirma(d = new Date()): string {
+/** Aclaración chica debajo de los datos: "Firmado digitalmente" y, si se pide, la fecha y la hora. */
+export function leyendaDeFirma(fecha: Date | null): string {
+  if (!fecha) return 'Firmado digitalmente';
   const dos = (n: number) => String(n).padStart(2, '0');
-  return `Firmado el ${dos(d.getDate())}/${dos(d.getMonth() + 1)}/${d.getFullYear()} a las ${dos(d.getHours())}:${dos(d.getMinutes())} h`;
+  return `Firmado digitalmente el ${dos(fecha.getDate())}/${dos(fecha.getMonth() + 1)}/${fecha.getFullYear()} a las ${dos(fecha.getHours())}:${dos(fecha.getMinutes())} h`;
 }

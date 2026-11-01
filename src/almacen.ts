@@ -4,6 +4,8 @@
  * de documentos).
  */
 import { GitHub } from './github';
+import { cifrarDocumento, cifrarTexto, generarClave, generarId, type Cabecera } from './cifrado';
+import { crearEnlace, repoDatosPredeterminado, rutaDocumento } from './enlace';
 
 export const CLAVE_TOKEN = 'firma-estudio:token';
 export const CLAVE_REPO = 'firma-estudio:repo';
@@ -19,6 +21,8 @@ export interface LinkGuardado {
   fecha: string;
   /** Cantidad de firmas marcadas por el estudio (si se preparó el documento). */
   firmas?: number;
+  /** Datos que escribió el cliente (se completa al descargar el firmado). */
+  firmante?: string;
 }
 
 export function leer(k: string): string | null {
@@ -60,4 +64,32 @@ export function conexion(): GitHub | null {
   const token = leer(CLAVE_TOKEN);
   const repo = leer(CLAVE_REPO);
   return token && repo ? new GitHub(token, repo) : null;
+}
+
+/**
+ * Cifra y sube un documento para firmar y devuelve el link para el cliente.
+ * El link lleva, cifrado con la clave del documento, el permiso para que el
+ * cliente guarde el documento firmado en el repositorio de documentos.
+ */
+export async function publicarDocumento(pdf: Uint8Array, cabecera: Cabecera, paginaCliente: string): Promise<LinkGuardado> {
+  const token = leer(CLAVE_TOKEN);
+  const repo = leer(CLAVE_REPO);
+  if (!token || !repo) throw new Error('Primero conectá GitHub en el panel del estudio.');
+  const gh = new GitHub(token, repo);
+  const clave = generarClave();
+  const id = generarId();
+  const sha = await gh.guardar(rutaDocumento(id), await cifrarDocumento(pdf, cabecera, clave), `Documento para firmar ${id}`);
+  const link = crearEnlace(paginaCliente, { id, clave, token: await cifrarTexto(token, clave), repo }, repoDatosPredeterminado(location));
+  const guardado: LinkGuardado = {
+    id,
+    titulo: cabecera.titulo,
+    archivo: cabecera.archivo,
+    link,
+    repo,
+    sha,
+    fecha: new Date().toISOString(),
+    firmas: cabecera.firmas?.length,
+  };
+  agregarLink(guardado);
+  return guardado;
 }

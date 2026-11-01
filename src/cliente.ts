@@ -11,21 +11,22 @@
 import SignaturePad, { type PointGroup } from 'signature_pad';
 import './firma.css';
 import { abrirPdf, Visor } from './visor';
-import { aspectoEstimado, componerImagen, fechaDeFirma, rasterizarFirma, type ImagenFirma } from './imagen';
+import { aspectoEstimado, componerImagen, leyendaDeFirma, rasterizarFirma, type ImagenFirma } from './imagen';
 import { PdfProtegidoError, estamparFirmas, leerInfoPdf } from './estampar';
 import { ubicacionAbajo, ubicacionDesdeRect, ubicarEnHoja, type BordeH, type Rect, type Tamano, type Ubicacion } from './ubicacion';
 import { ubicarDebajoDelTexto } from './autoubicar';
-import { crearEnlace, leerEnlace, repoDesdeUbicacion, rutaDocumento, urlDocumento } from './enlace';
+import { leerEnlace, repoDatosPredeterminado, rutaDocumento, rutaFirmado } from './enlace';
 import {
   LinkInvalidoError,
   cifrarDocumento,
   descifrarDocumento,
-  generarClave,
-  generarId,
+  descifrarTexto,
   type Cabecera,
+  type Devolucion,
   type LugarDeFirma,
 } from './cifrado';
-import { agregarLink, conexion } from './almacen';
+import { ErrorGitHub, GitHub } from './github';
+import { conexion, publicarDocumento } from './almacen';
 import { crearZip } from './zip';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -71,6 +72,8 @@ const estado = {
   borde: 'der' as BordeH,
   color: '#1b3a8a',
   firmado: null as { pdf: Uint8Array; imagenes: { hoja: number; png: Uint8Array }[] } | null,
+  /** Link del estudio: dónde se guarda el documento firmado. */
+  envio: null as { gh: GitHub; id: string; clave: string; titulo: string } | null,
 };
 let proximoId = 1;
 
@@ -137,7 +140,7 @@ function aspectoDe(c: Casillero): number {
   if (c.imagen) return c.imagen.aspecto;
   const otra = estado.casilleros.find((x) => x.imagen);
   if (otra?.imagen) return otra.imagen.aspecto;
-  return estado.preparar ? aspectoEstimado('Nombre\nDNI\nDomicilio', true) : aspectoEstimado(texto(), conFecha());
+  return estado.preparar ? aspectoEstimado('Nombre\nDNI\nDomicilio') : aspectoEstimado(texto());
 }
 
 function rectDe(c: Casillero): Rect | null {
@@ -234,24 +237,32 @@ function actualizarUbicaciones() {
 
 async function abrirDesdeLink(): Promise<boolean> {
   if (!/[#&]d=/.test(location.hash)) return false;
-  const datos = leerEnlace(location.hash, repoDesdeUbicacion(location));
+  const datos = leerEnlace(location.hash, repoDatosPredeterminado(location));
   if (!datos || !datos.repo) {
     mostrarError('El link está incompleto. Copialo entero o pedile al estudio que te lo reenvíe.');
     return true;
   }
   estado.desdeLink = true;
+  document.body.classList.add('modo-cliente');
   cargando('Descargando el documento…');
   try {
-    let r: Response;
+    const gh = new GitHub(await descifrarTexto(datos.token, datos.clave), datos.repo);
+    let cifrado: Uint8Array;
     try {
-      r = await fetch(urlDocumento(datos.repo, datos.id), { cache: 'no-store' });
-    } catch {
-      throw new Error('No se pudo descargar el documento. Revisá tu conexión a internet y volvé a abrir el link.');
+      cifrado = await gh.leer(rutaDocumento(datos.id));
+    } catch (e) {
+      if (e instanceof ErrorGitHub && e.estado === 404) {
+        throw new Error('Este documento ya no está disponible. Pedile al estudio que te mande un link nuevo.');
+      }
+      if (e instanceof ErrorGitHub && e.estado === 401) {
+        throw new Error('Este link venció. Pedile al estudio que te mande uno nuevo.');
+      }
+      if (e instanceof ErrorGitHub && e.estado === 0) throw e;
+      throw new Error('No se pudo descargar el documento. Probá de nuevo en un rato.');
     }
-    if (r.status === 404) throw new Error('Este documento ya no está disponible. Pedile al estudio que te mande un link nuevo.');
-    if (!r.ok) throw new Error(`No se pudo descargar el documento (error ${r.status}). Probá de nuevo en un rato.`);
     cargando('Abriendo el documento…');
-    const { cabecera, pdf } = await descifrarDocumento(new Uint8Array(await r.arrayBuffer()), datos.clave);
+    const { cabecera, pdf } = await descifrarDocumento<Cabecera>(cifrado, datos.clave);
+    estado.envio = { gh, id: datos.id, clave: datos.clave, titulo: cabecera.titulo || cabecera.archivo };
     aplicarCabecera(cabecera);
     await cargarPdf(pdf, cabecera.archivo || 'documento.pdf', cabecera);
   } catch (e) {
@@ -271,6 +282,7 @@ async function abrirDesdeLink(): Promise<boolean> {
 function aplicarCabecera(c: Cabecera) {
   const titulo = c.titulo || c.archivo;
   $('titulo').textContent = titulo ? `Firmá: ${titulo}` : 'Firmá tu documento';
+  $('bajada').textContent = 'Leé el documento, escribí tus datos y firmá con el dedo. Al terminar, el documento firmado le llega solo al estudio.';
   if (titulo) document.title = `Firmar · ${titulo}`;
   if (c.instrucciones?.trim()) {
     $('instrucciones-texto').textContent = c.instrucciones.trim();
@@ -303,11 +315,12 @@ function casillerosIniciales(cabecera: Cabecera | undefined, total: number) {
     ordenar();
     const unaPorHoja = lugares.length === total && new Set(lugares.map((l) => l.hoja)).size === total;
     estado.modo = lugares.length === 1 ? 'una' : unaPorHoja ? 'todas' : 'elegir';
-    estado.fijo = !!cabecera?.fijo;
+    // Con link, el cliente sólo escribe sus datos y firma: los lugares los decide el estudio.
+    estado.fijo = estado.desdeLink || !!cabecera?.fijo;
     estado.anchoPt = lugares[0].ubic.anchoPt;
     return;
   }
-  estado.fijo = false;
+  estado.fijo = estado.desdeLink;
   estado.modo = cabecera?.alcance === 'todas' && total > 1 ? 'todas' : 'una';
   estado.casilleros = [];
   aplicarModo(estado.modo, false);
@@ -458,7 +471,7 @@ function armarHojas(visor: Visor, conFirmas: boolean) {
     pie.append(num);
     if (conFirmas) {
       const marca = document.createElement('span');
-      marca.className = 'hoja-marca';
+      marca.className = 'hoja-marca solo-estudio';
       const mover = document.createElement('button');
       mover.type = 'button';
       mover.className = 'boton chico hoja-mover';
@@ -621,7 +634,9 @@ function refrescar() {
   $<HTMLButtonElement>('quitar').disabled = n === 1;
 
   // Recuadro de firma
-  const titulo = n === 1 ? 'Firmá acá' : `Firma ${k} de ${n} · va en la hoja ${c.hoja}`;
+  const titulo =
+    n === 1 ? 'Firmá acá' : estado.desdeLink ? `Firma ${k} de ${n}` : `Firma ${k} de ${n} · va en la hoja ${c.hoja}`;
+  if (!estado.preparar) $('titulo-firmas').textContent = n === 1 ? 'Tu firma' : 'Tus firmas';
   $('pad-titulo').textContent = titulo;
   $('pf-titulo').textContent = titulo;
   const ultima = estado.actual === n - 1;
@@ -984,7 +999,7 @@ function componer(casilleros: Casillero[], fecha?: Date): Promise<void> {
       const img = await componerImagen({
         firma: c.recorte,
         texto: texto(),
-        fecha: conFecha() ? fechaDeFirma(fecha ?? new Date()) : null,
+        fecha: leyendaDeFirma(conFecha() ? (fecha ?? new Date()) : null),
         color: estado.color,
       });
       if (c.trazos !== trazos || !estado.casilleros.includes(c)) {
@@ -1064,6 +1079,24 @@ async function firmar() {
       return { hoja: c.hoja, png: c.imagen.png, aspecto: c.imagen.aspecto, ubicacion: c.ubic };
     });
     const pdf = await estamparFirmas(estado.original, firmas);
+    // Con link: se guarda cifrado para que el estudio lo descargue desde su panel.
+    let errorEnvio: string | null = null;
+    if (estado.envio) {
+      boton.textContent = 'Enviando al estudio…';
+      const devolucion: Devolucion = {
+        titulo: estado.envio.titulo,
+        archivo: estado.nombre,
+        datos: texto().trim(),
+        firmas: firmas.length,
+        firmado: new Date().toISOString(),
+      };
+      try {
+        const paquete = await cifrarDocumento(pdf, devolucion, estado.envio.clave);
+        await estado.envio.gh.guardar(rutaFirmado(estado.envio.id), paquete, `Documento firmado ${estado.envio.id}`);
+      } catch (e) {
+        errorEnvio = e instanceof Error ? e.message : 'error desconocido';
+      }
+    }
     await descartarFirmado();
     estado.firmado = { pdf, imagenes: firmas.map((f) => ({ hoja: f.hoja, png: f.png })) };
     const visorFirmado = new Visor(
@@ -1076,15 +1109,33 @@ async function firmar() {
     $('resultado').hidden = false;
     boton.hidden = true;
     const archivo = new File([pdf as BlobPart], `${nombreBase()} - firmado.pdf`, { type: 'application/pdf' });
-    $('compartir').hidden = !(navigator.canShare && navigator.canShare({ files: [archivo] }));
+    const puedeCompartir = !!(navigator.canShare && navigator.canShare({ files: [archivo] }));
+    const enviado = !!estado.envio && !errorEnvio;
+    $('resultado-texto').hidden = !!errorEnvio;
+    $('resultado-texto').textContent = enviado
+      ? '✅ ¡Listo! El documento firmado ya le llegó al estudio. No hace falta que lo mandes.'
+      : '✅ ¡Listo! El documento quedó firmado. Descargalo o compartilo.';
+    $('resultado-error').hidden = !errorEnvio;
+    $('resultado-error').textContent = errorEnvio
+      ? `⚠️ El documento quedó firmado, pero no se pudo enviar al estudio (${errorEnvio}). Descargalo y mandáselo por WhatsApp o mail.`
+      : '';
+    $('descargar').textContent = enviado ? 'Descargar una copia' : '⬇ Descargar PDF firmado';
+    $('descargar').classList.toggle('principal', !enviado);
+    $('compartir').hidden = enviado || !puedeCompartir;
+    $('descargar-imagen').hidden = !!estado.envio;
+    $('editar').textContent = enviado ? 'Corregir y volver a firmar' : 'Volver a editar';
     $('resultado').scrollIntoView({ behavior: 'smooth', block: 'center' });
     document.querySelector(`#hojas [data-hoja="${firmas[0].hoja}"]`)?.scrollIntoView({ block: 'nearest' });
   } catch (e) {
     mostrarError(e instanceof Error ? `No se pudo firmar: ${e.message}` : 'No se pudo firmar el documento.');
   } finally {
     boton.disabled = false;
-    boton.textContent = 'Firmar el documento';
+    boton.textContent = textoBotonFirmar();
   }
+}
+
+function textoBotonFirmar() {
+  return estado.envio ? 'Firmar y enviar al estudio' : 'Firmar el documento';
 }
 
 function prepararResultado() {
@@ -1129,8 +1180,7 @@ function prepararEnvio() {
     el.dataset.tipo = tipo;
   };
   $('env-generar').addEventListener('click', async () => {
-    const gh = conexion();
-    if (!gh) {
+    if (!conexion()) {
       estadoEnvio('Primero conectá GitHub en el Panel del estudio (botón arriba a la derecha).', 'error');
       return;
     }
@@ -1148,17 +1198,11 @@ function prepararEnvio() {
         instrucciones: $<HTMLTextAreaElement>('env-indicaciones').value.trim(),
         alcance: estado.modo === 'todas' ? 'todas' : 'ultima',
         firmas,
-        fijo: !$<HTMLInputElement>('env-libre').checked,
+        fijo: true,
         creado: new Date().toISOString(),
       };
       estadoEnvio('Cifrando y subiendo…');
-      const clave = generarClave();
-      const id = generarId();
-      const cifrado = await cifrarDocumento(estado.original, cabecera, clave);
-      await gh.asegurarRama();
-      const sha = await gh.subir(rutaDocumento(id), cifrado, `Documento para firmar ${id}`);
-      const link = crearEnlace(location.origin + location.pathname, { id, clave, repo: gh.repo }, repoDesdeUbicacion(location));
-      agregarLink({ id, titulo, archivo: estado.nombre, link, repo: gh.repo, sha, fecha: new Date().toISOString(), firmas: firmas.length });
+      const { link } = await publicarDocumento(estado.original, cabecera, location.origin + location.pathname);
       $<HTMLInputElement>('env-link').value = link;
       $<HTMLAnchorElement>('env-abrir').href = link;
       $<HTMLAnchorElement>('env-whatsapp').href = `https://wa.me/?text=${encodeURIComponent(
@@ -1266,6 +1310,7 @@ async function iniciar() {
   $('con-fecha').addEventListener('change', alCambiarDatos);
   window.addEventListener('hashchange', () => location.reload());
   const conLink = await abrirDesdeLink();
+  $('firmar').textContent = textoBotonFirmar();
   if (!conLink) {
     $('elegir').hidden = false;
     $('pie-estudio').hidden = estado.preparar;

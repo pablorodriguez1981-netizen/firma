@@ -74,22 +74,22 @@
               spellcheck="false"
               placeholder="Nombre y apellido: Juan Pérez&#10;DNI: 12.345.678&#10;Domicilio: …"
             ></textarea>
-            <label class="check"><input type="checkbox" id="con-fecha" checked /> Agregar la fecha y la hora de la firma</label>
+            <label class="check solo-estudio"><input type="checkbox" id="con-fecha" checked /> Agregar la fecha y la hora de la firma</label>
           </section>
 
           <section class="tarjeta paso" id="paso-firmas">
             <h2><span class="num" id="num-firmas">2</span> <span id="titulo-firmas">Tus firmas</span></h2>
 
-            <div id="modos" class="alcances alcances-3" role="radiogroup" aria-label="Cuántas firmas">
+            <div id="modos" class="alcances alcances-3 solo-estudio" role="radiogroup" aria-label="Cuántas firmas">
               <label class="alcance"><input type="radio" name="modo" value="una" checked /><span><strong>Una firma</strong><small>En una hoja</small></span></label>
               <label class="alcance"><input type="radio" name="modo" value="todas" /><span><strong>Todas las hojas</strong><small id="modo-todas-detalle">Una firma por hoja</small></span></label>
               <label class="alcance"><input type="radio" name="modo" value="elegir" /><span><strong>Elegir</strong><small>Una o varias, donde quieras</small></span></label>
             </div>
-            <p class="resumen" id="resumen" role="status"></p>
+            <p class="resumen solo-estudio" id="resumen" role="status"></p>
 
-            <div class="fichas" id="fichas" aria-label="Firmas"></div>
+            <div class="fichas solo-estudio" id="fichas" aria-label="Firmas"></div>
 
-            <div class="casillero-cabecera">
+            <div class="casillero-cabecera solo-estudio">
               <button type="button" class="boton chico" id="cas-ant" aria-label="Firma anterior">‹</button>
               <div class="casillero-titulo">
                 <strong id="cas-titulo">Firma 1</strong>
@@ -99,26 +99,26 @@
               <button type="button" class="boton chico" id="cas-sig" aria-label="Firma siguiente">›</button>
             </div>
 
-            <div class="editor-hoja" id="editor-hoja">
+            <div class="editor-hoja solo-estudio" id="editor-hoja">
               <img id="ed-img" alt="" />
               <div id="ed-capas"></div>
             </div>
-            <p class="aviso aviso-alerta aviso-chico" id="aviso-tapa" hidden>
+            <p class="aviso aviso-alerta aviso-chico solo-estudio" id="aviso-tapa" hidden>
               ⚠️ En esta hoja no hay un lugar libre: la firma puede tapar texto. Movela o achicala.
             </p>
-            <p class="ayuda centrada">Se ubica sola debajo del texto. Arrastrala o tocá la hoja para moverla.</p>
-            <div class="rapidos">
+            <p class="ayuda centrada solo-estudio">Se ubica sola debajo del texto. Arrastrala o tocá la hoja para moverla.</p>
+            <div class="rapidos solo-estudio">
               <span class="rapidos-titulo">Debajo del texto:</span>
               <button type="button" class="boton chico" data-pos="izq">↙ Izquierda</button>
               <button type="button" class="boton chico" data-pos="centro">↓ Centro</button>
               <button type="button" class="boton chico" data-pos="der">↘ Derecha</button>
             </div>
-            <label class="tamano">
+            <label class="tamano solo-estudio">
               <span>Tamaño</span>
               <input type="range" id="tamano" min="70" max="420" step="2" />
               <span id="tamano-cm" class="tamano-cm"></span>
             </label>
-            <div class="fila-botones" id="acciones-elegir">
+            <div class="fila-botones solo-estudio" id="acciones-elegir">
               <button type="button" class="boton chico" id="agregar">＋ Otra firma en esta hoja</button>
               <button type="button" class="boton chico peligro" id="quitar">Quitar esta firma</button>
             </div>
@@ -150,7 +150,8 @@
             <button type="button" class="boton principal grande" id="firmar">Firmar el documento</button>
             <p class="ayuda centrada" id="falta" role="status"></p>
             <div id="resultado" class="resultado" hidden>
-              <p class="aviso aviso-ok">✅ ¡Listo! El documento quedó firmado. Descargalo o compartilo.</p>
+              <p class="aviso aviso-ok" id="resultado-texto">✅ ¡Listo! El documento quedó firmado. Descargalo o compartilo.</p>
+              <p class="aviso aviso-alerta" id="resultado-error" hidden></p>
               <button type="button" class="boton principal grande" id="descargar">⬇ Descargar PDF firmado</button>
               <button type="button" class="boton grande" id="compartir" hidden>Compartir / enviar (WhatsApp, mail…)</button>
               <button type="button" class="boton" id="descargar-imagen">Descargar la firma como imagen</button>
@@ -168,7 +169,6 @@
               <span>Indicaciones para el cliente <small>(opcional)</small></span>
               <textarea id="env-indicaciones" rows="3" placeholder="Ej.: Firmá donde está marcado y mandámelo por WhatsApp."></textarea>
             </label>
-            <label class="check"><input type="checkbox" id="env-libre" /> Que el cliente pueda cambiar cuántas firmas y en qué hojas</label>
             <button type="button" class="boton principal grande" id="env-generar">Subir y generar link</button>
             <p id="env-estado" class="estado" role="status"></p>
             <div id="env-resultado" hidden>

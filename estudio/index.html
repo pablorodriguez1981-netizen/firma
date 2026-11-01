@@ -24,8 +24,8 @@
       <section class="intro">
         <h1>Mandá documentos para firmar</h1>
         <p class="bajada">
-          Subí el PDF, copiá el link y mandáselo al cliente (por WhatsApp o mail). El cliente lo abre en el celular, escribe sus
-          datos, firma a mano y te devuelve el PDF firmado.
+          Preparás el PDF, le mandás el link al cliente, él escribe sus datos y firma en el celular, y el documento firmado te llega
+          acá para descargarlo. El cliente no tiene que mandarte nada.
         </p>
       </section>
 
@@ -33,20 +33,27 @@
         <h2><span class="num">1</span> Conectar con GitHub <small class="estado-chip" id="chip-conexion">Sin conectar</small></h2>
         <div id="conexion-form">
           <p class="ayuda">
-            Los PDF se guardan <strong>cifrados</strong> en tu repositorio de GitHub (nadie puede leerlos sin el link). Para subirlos
-            desde acá hace falta un token con permiso sobre ese repositorio. Se hace una sola vez y queda guardado sólo en este
-            navegador.
+            Los documentos (los que mandás y los firmados) se guardan <strong>cifrados</strong> en un repositorio privado tuyo,
+            aparte del de la página. Se configura una sola vez y queda guardado sólo en este navegador.
           </p>
           <ol class="lista-pasos">
+            <li>
+              Creá el repositorio de documentos: <a href="https://github.com/new" target="_blank" rel="noopener">github.com/new</a> ›
+              nombre <code id="repo-nombre">firma-datos</code> › <strong>Private</strong> › sin README › <strong>Create repository</strong>.
+            </li>
             <li>Abrí <a id="link-token" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub › Generar token</a> (fine-grained token).</li>
-            <li><strong>Token name</strong>: «Firma de documentos». <strong>Expiration</strong>: la que prefieras (por ejemplo, 1 año).</li>
-            <li><strong>Repository access</strong> › <em>Only select repositories</em> › elegí <code id="repo-sugerido">tu repositorio</code>.</li>
+            <li><strong>Token name</strong>: «Firma de documentos». <strong>Expiration</strong>: la más larga que te deje (por ejemplo, 1 año).</li>
+            <li><strong>Repository access</strong> › <em>Only select repositories</em> › elegí <strong>sólo</strong> <code id="repo-sugerido">firma-datos</code>.</li>
             <li><strong>Permissions</strong> › <em>Repository permissions</em> › <strong>Contents</strong>: <em>Read and write</em>.</li>
             <li><strong>Generate token</strong>, copialo y pegalo acá abajo.</li>
           </ol>
+          <p class="ayuda nota-seguridad">
+            🔒 Cada link lleva, cifrado, el permiso para guardar el documento firmado en <em>ese</em> repositorio. Por eso el token tiene
+            que tener acceso sólo a <code>firma-datos</code>: nunca al de la página.
+          </p>
           <label class="campo">
-            <span>Repositorio</span>
-            <input id="repo" placeholder="usuario/repositorio" autocomplete="off" spellcheck="false" />
+            <span>Repositorio de documentos</span>
+            <input id="repo" placeholder="usuario/firma-datos" autocomplete="off" spellcheck="false" />
           </label>
           <label class="campo">
             <span>Token</span>
@@ -63,17 +70,29 @@
         <p id="estado-conexion" class="estado" role="status"></p>
       </section>
 
+      <section class="tarjeta">
+        <h2>
+          <span class="num">2</span> Documentos
+          <button type="button" class="boton chico boton-h2" id="actualizar">↻ Actualizar</button>
+        </h2>
+        <p class="ayuda">Acá ves cuáles ya firmó el cliente y los descargás firmados.</p>
+        <p id="estado-lista" class="estado" role="status"></p>
+        <ul id="lista" class="lista-links"></ul>
+        <p id="lista-vacia" class="ayuda vacia">Todavía no mandaste documentos desde este navegador.</p>
+      </section>
+
       <section class="tarjeta destacada">
-        <h2><span class="num">2</span> Preparar un documento y marcar dónde firma</h2>
+        <h2><span class="num">3</span> Preparar un documento y marcar dónde firma</h2>
         <p class="ayuda">
-          Elegís el PDF, decidís si el cliente firma una vez, en todas las hojas (una firma distinta por hoja) o donde vos
-          marques. Cada firma se ubica sola debajo del texto y la podés mover. Después generás el link.
+          Elegís el PDF y decidís si el cliente firma una vez, en todas las hojas (una firma distinta por hoja) o donde vos marques.
+          Cada firma se ubica sola debajo del texto y la podés mover. El cliente sólo ve el documento, el lugar para sus datos y el
+          recuadro para firmar.
         </p>
         <a class="boton principal grande" href="../#preparar">Preparar documento ›</a>
       </section>
 
       <section class="tarjeta" id="subir-seccion">
-        <h2><span class="num">3</span> Subida rápida <small class="sub-h2">(sin marcar lugares: el cliente elige)</small></h2>
+        <h2><span class="num">4</span> Subida rápida <small class="sub-h2">(sin marcar lugares: se ubican solos)</small></h2>
         <label class="soltar" id="soltar">
           <input type="file" id="archivos" accept="application/pdf,.pdf" multiple />
           <span class="soltar-icono" aria-hidden="true">📄</span>
@@ -87,27 +106,17 @@
         </label>
         <label class="campo">
           <span>Indicaciones para el cliente <small>(opcional)</small></span>
-          <textarea id="indicaciones" rows="3" placeholder="Ej.: Firmá todas las hojas y mandámelo por WhatsApp."></textarea>
+          <textarea id="indicaciones" rows="3" placeholder="Ej.: Leelo con atención antes de firmar."></textarea>
         </label>
         <fieldset class="campo">
-          <legend>Dónde firmar <small>(sugerencia; el cliente lo puede cambiar)</small></legend>
+          <legend>Dónde firma</legend>
           <div class="alcances">
-            <label class="alcance"><input type="radio" name="sugerencia" value="ultima" checked /><span><strong>Una firma</strong><small>En la última hoja</small></span></label>
+            <label class="alcance"><input type="radio" name="sugerencia" value="ultima" checked /><span><strong>Una firma</strong><small>En la última hoja, debajo del texto</small></span></label>
             <label class="alcance"><input type="radio" name="sugerencia" value="todas" /><span><strong>Todas las hojas</strong><small>Una firma distinta en cada hoja</small></span></label>
           </div>
         </fieldset>
         <button type="button" class="boton principal grande" id="subir">Subir y generar link</button>
         <p id="estado-subida" class="estado" role="status"></p>
-      </section>
-
-      <section class="tarjeta">
-        <h2><span class="num">4</span> Links generados</h2>
-        <p class="ayuda">
-          Cada link abre su documento. La clave para leerlo está sólo en el link: si lo perdés, subí el PDF de nuevo. Cuando el
-          cliente termine, podés borrarlo.
-        </p>
-        <ul id="lista" class="lista-links"></ul>
-        <p id="lista-vacia" class="ayuda vacia">Todavía no generaste links en este navegador.</p>
       </section>
 
       <section class="tarjeta">
@@ -120,7 +129,7 @@
     </main>
 
     <footer class="pie">
-      <p>El token y la lista de links quedan guardados sólo en este navegador.</p>
+      <p>El token y la lista de documentos (con las claves para abrirlos) quedan guardados sólo en este navegador.</p>
     </footer>
 
     <script type="module" src="/src/estudio.ts"></script>

@@ -1,10 +1,8 @@
 /**
- * Subida de documentos cifrados al repositorio, con un token de GitHub del
- * estudio (permiso "Contents: Read and write" sobre este repositorio).
- * Los documentos van a una rama aparte, sin historial de la app, para que
- * subir un caso no dispare compilaciones ni publicaciones.
+ * Acceso al repositorio (privado) de documentos con un token de GitHub
+ * (permiso "Contents: Read and write" sólo sobre ese repositorio).
+ * Todo lo que se guarda va cifrado.
  */
-import { RAMA } from './enlace';
 
 const API = 'https://api.github.com';
 
@@ -19,9 +17,10 @@ export class ErrorGitHub extends Error {
 }
 
 function mensajeDeError(estado: number, detalle: string): string {
-  if (estado === 401) return 'El token no es válido o venció. Generá uno nuevo.';
-  if (estado === 403) return 'El token no tiene permiso para escribir en el repositorio (hace falta "Contents: Read and write").';
-  if (estado === 404) return 'No se encontró el repositorio (o el token no tiene acceso a él).';
+  if (estado === 401) return 'El permiso de GitHub no es válido o venció.';
+  if (estado === 403) return 'El token no tiene permiso para escribir en el repositorio de documentos (hace falta "Contents: Read and write").';
+  if (estado === 404) return 'No se encontró el repositorio de documentos (o el token no tiene acceso a él).';
+  if (estado === 409) return 'GitHub estaba ocupado guardando otro archivo. Probá de nuevo.';
   if (estado === 413 || estado === 422) return `GitHub rechazó el archivo: ${detalle || 'revisá que no sea demasiado grande'}.`;
   return `Error de GitHub (${estado})${detalle ? `: ${detalle}` : ''}.`;
 }
@@ -36,12 +35,11 @@ export async function aBase64(bytes: Uint8Array): Promise<string> {
   return url.slice(url.indexOf(',') + 1);
 }
 
-const LEEME = `# Documentos para firmar
-
-Esta rama guarda los documentos que el estudio sube desde el panel de firma.
-Cada archivo está cifrado (AES-GCM de 256 bits): sin la clave, que sólo
-figura en el link enviado al cliente, no se puede leer.
-`;
+export interface ArchivoRemoto {
+  nombre: string;
+  sha: string;
+  tamano: number;
+}
 
 export class GitHub {
   constructor(
@@ -49,13 +47,13 @@ export class GitHub {
     readonly repo: string,
   ) {}
 
-  private async pedir<T>(metodo: string, ruta: string, cuerpo?: unknown): Promise<T> {
+  private async respuesta(metodo: string, ruta: string, cuerpo?: unknown, crudo = false): Promise<Response> {
     let r: Response;
     try {
       r = await fetch(`${API}${ruta}`, {
         method: metodo,
         headers: {
-          Accept: 'application/vnd.github+json',
+          Accept: crudo ? 'application/vnd.github.raw' : 'application/vnd.github+json',
           Authorization: `Bearer ${this.token}`,
           'X-GitHub-Api-Version': '2022-11-28',
           ...(cuerpo ? { 'Content-Type': 'application/json' } : {}),
@@ -75,7 +73,16 @@ export class GitHub {
       }
       throw new ErrorGitHub(mensajeDeError(r.status, detalle), r.status);
     }
+    return r;
+  }
+
+  private async pedir<T>(metodo: string, ruta: string, cuerpo?: unknown): Promise<T> {
+    const r = await this.respuesta(metodo, ruta, cuerpo);
     return (r.status === 204 ? null : await r.json()) as T;
+  }
+
+  private contenidos(ruta: string) {
+    return `/repos/${this.repo}/contents/${ruta.split('/').map(encodeURIComponent).join('/')}`;
   }
 
   /** Verifica el token y el permiso de escritura. */
@@ -84,40 +91,59 @@ export class GitHub {
     return { privado: datos.private, escritura: !!datos.permissions?.push };
   }
 
-  /** Crea la rama de documentos (sin historial) si todavía no existe. */
-  async asegurarRama(): Promise<void> {
+  /** Contenido de un archivo. */
+  async leer(ruta: string): Promise<Uint8Array> {
+    const r = await this.respuesta('GET', this.contenidos(ruta), undefined, true);
+    return new Uint8Array(await r.arrayBuffer());
+  }
+
+  /** sha de un archivo, o null si no existe. */
+  async sha(ruta: string): Promise<string | null> {
     try {
-      await this.pedir('GET', `/repos/${this.repo}/git/ref/heads/${RAMA}`);
-      return;
+      return (await this.pedir<{ sha: string }>('GET', this.contenidos(ruta))).sha;
     } catch (e) {
-      if (!(e instanceof ErrorGitHub) || e.estado !== 404) throw e;
+      if (e instanceof ErrorGitHub && e.estado === 404) return null;
+      throw e;
     }
-    const arbol = await this.pedir<{ sha: string }>('POST', `/repos/${this.repo}/git/trees`, {
-      tree: [{ path: 'LEEME.md', mode: '100644', type: 'blob', content: LEEME }],
-    });
-    const commit = await this.pedir<{ sha: string }>('POST', `/repos/${this.repo}/git/commits`, {
-      message: 'Rama para documentos a firmar',
-      tree: arbol.sha,
-      parents: [],
-    });
-    await this.pedir('POST', `/repos/${this.repo}/git/refs`, { ref: `refs/heads/${RAMA}`, sha: commit.sha });
   }
 
-  /** Sube un archivo a la rama de documentos y devuelve su sha (para poder borrarlo). */
-  async subir(ruta: string, bytes: Uint8Array, mensaje: string): Promise<string> {
-    const r = await this.pedir<{ content: { sha: string } }>('PUT', `/repos/${this.repo}/contents/${ruta}`, {
-      message: mensaje,
-      content: await aBase64(bytes),
-      branch: RAMA,
-    });
-    return r.content.sha;
-  }
-
-  async borrar(ruta: string, sha: string, mensaje: string): Promise<void> {
+  /** Archivos de una carpeta ([] si no existe). */
+  async listar(carpeta: string): Promise<ArchivoRemoto[]> {
     try {
-      await this.pedir('DELETE', `/repos/${this.repo}/contents/${ruta}`, { message: mensaje, sha, branch: RAMA });
+      const l = await this.pedir<{ name: string; sha: string; size: number; type: string }[]>('GET', this.contenidos(carpeta));
+      return Array.isArray(l) ? l.filter((x) => x.type === 'file').map((x) => ({ nombre: x.name, sha: x.sha, tamano: x.size })) : [];
     } catch (e) {
-      // Si ya no estaba, no hay nada que borrar.
+      if (e instanceof ErrorGitHub && e.estado === 404) return [];
+      throw e;
+    }
+  }
+
+  /** Guarda un archivo (si ya existe, lo reemplaza) y devuelve su sha. */
+  async guardar(ruta: string, bytes: Uint8Array, mensaje: string): Promise<string> {
+    const contenido = await aBase64(bytes);
+    for (let intento = 0; ; intento++) {
+      const sha = await this.sha(ruta);
+      try {
+        const r = await this.pedir<{ content: { sha: string } }>('PUT', this.contenidos(ruta), {
+          message: mensaje,
+          content: contenido,
+          ...(sha ? { sha } : {}),
+        });
+        return r.content.sha;
+      } catch (e) {
+        // Dos guardados a la vez: se reintenta con el sha nuevo.
+        if (intento < 2 && e instanceof ErrorGitHub && (e.estado === 409 || e.estado === 422)) continue;
+        throw e;
+      }
+    }
+  }
+
+  async borrar(ruta: string, mensaje: string): Promise<void> {
+    const sha = await this.sha(ruta);
+    if (!sha) return;
+    try {
+      await this.pedir('DELETE', this.contenidos(ruta), { message: mensaje, sha });
+    } catch (e) {
       if (!(e instanceof ErrorGitHub) || e.estado !== 404) throw e;
     }
   }

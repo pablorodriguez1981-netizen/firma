@@ -1156,3 +1156,55 @@ code {
 .pie p {
   margin: 4px 0;
 }
+
+/* ───────────── Cliente con link: sólo datos y firma ───────────── */
+
+body.modo-cliente .solo-estudio {
+  display: none !important;
+}
+
+body.modo-cliente .zona-pad {
+  margin-top: 4px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* ───────────── Panel: documentos ───────────── */
+
+.boton-h2 {
+  margin-left: auto;
+  font-size: 13px;
+}
+
+.nota-seguridad {
+  background: var(--acento-suave);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.link-titulo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.link-titulo .estado-chip {
+  margin-left: 0;
+  flex: none;
+}
+
+.link-firmante {
+  color: var(--ok) !important;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.link-item.firmado {
+  border-color: var(--ok);
+  background: var(--ok-fondo);
+}
+
+.link-item .fila-botones {
+  margin-top: 6px;
+}

@@ -27,9 +27,19 @@ export interface Cabecera {
   alcance?: 'ultima' | 'todas';
   /** Lugares de firma marcados por el estudio (uno por cada firma que hace el cliente). */
   firmas?: LugarDeFirma[];
-  /** Si es true, el cliente no puede cambiar cuántas firmas ni en qué hojas (sí moverlas un poco). */
+  /** Si es true, el cliente no puede cambiar cuántas firmas ni en qué hojas. */
   fijo?: boolean;
   creado: string;
+}
+
+/** Lo que devuelve el cliente junto con el PDF firmado. */
+export interface Devolucion {
+  titulo: string;
+  archivo: string;
+  /** Datos que escribió el cliente debajo de la firma. */
+  datos: string;
+  firmas: number;
+  firmado: string;
 }
 
 export function aBase64Url(bytes: Uint8Array): string {
@@ -67,7 +77,7 @@ export function generarId(): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export async function cifrarDocumento(pdf: Uint8Array, cabecera: Cabecera, clave: string): Promise<Uint8Array> {
+export async function cifrarDocumento<C extends object = Cabecera>(pdf: Uint8Array, cabecera: C, clave: string): Promise<Uint8Array> {
   const key = await importarClave(clave, 'encrypt');
   const cab = new TextEncoder().encode(JSON.stringify(cabecera));
   const plano = new Uint8Array(4 + cab.length + pdf.length);
@@ -85,7 +95,7 @@ export async function cifrarDocumento(pdf: Uint8Array, cabecera: Cabecera, clave
   return out;
 }
 
-export async function descifrarDocumento(datos: Uint8Array, clave: string): Promise<{ cabecera: Cabecera; pdf: Uint8Array }> {
+export async function descifrarDocumento<C extends object = Cabecera>(datos: Uint8Array, clave: string): Promise<{ cabecera: C; pdf: Uint8Array }> {
   if (datos.length < MAGIA.length + 12 + 16 || MAGIA.some((b, i) => datos[i] !== b)) throw new LinkInvalidoError();
   const key = await importarClave(clave, 'decrypt');
   const iv = datos.subarray(MAGIA.length, MAGIA.length + 12);
@@ -102,6 +112,33 @@ export async function descifrarDocumento(datos: Uint8Array, clave: string): Prom
     throw new LinkInvalidoError();
   }
   const largo = new DataView(plano.buffer, plano.byteOffset).getUint32(0);
-  const cabecera = JSON.parse(new TextDecoder().decode(plano.subarray(4, 4 + largo))) as Cabecera;
+  const cabecera = JSON.parse(new TextDecoder().decode(plano.subarray(4, 4 + largo))) as C;
   return { cabecera, pdf: plano.slice(4 + largo) };
+}
+
+/** Cifra un texto corto (el permiso de GitHub que va en el link) con la clave del documento. */
+export async function cifrarTexto(texto: string, clave: string): Promise<string> {
+  const key = await importarClave(clave, 'encrypt');
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const c = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(texto) as BufferSource));
+  const out = new Uint8Array(12 + c.length);
+  out.set(iv);
+  out.set(c, 12);
+  return aBase64Url(out);
+}
+
+export async function descifrarTexto(cifrado: string, clave: string): Promise<string> {
+  const datos = desdeBase64Url(cifrado);
+  if (datos.length < 12 + 16) throw new LinkInvalidoError();
+  const key = await importarClave(clave, 'decrypt');
+  try {
+    const plano = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: datos.subarray(0, 12) as BufferSource },
+      key,
+      datos.subarray(12) as BufferSource,
+    );
+    return new TextDecoder().decode(plano);
+  } catch {
+    throw new LinkInvalidoError();
+  }
 }

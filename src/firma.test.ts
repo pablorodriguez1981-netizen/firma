@@ -12,8 +12,9 @@ import {
 import { estamparFirmas, leerInfoPdf, tieneFirmasDigitales } from './estampar';
 import { finDelTexto, mascaraDesdePixeles, ubicarDebajoDelTexto, type Mascara } from './autoubicar';
 import { crc32, crearZip } from './zip';
-import { LinkInvalidoError, cifrarDocumento, descifrarDocumento, generarClave, generarId } from './cifrado';
-import { crearEnlace, leerEnlace, repoDesdeUbicacion, urlDocumento } from './enlace';
+import { LinkInvalidoError, cifrarDocumento, cifrarTexto, descifrarDocumento, descifrarTexto, generarClave, generarId } from './cifrado';
+import { claveDeEnlace, crearEnlace, leerEnlace, repoDatosPredeterminado, rutaDocumento, rutaFirmado } from './enlace';
+import { leyendaDeFirma } from './imagen';
 
 /** Transformación de pdf.js (PageViewport) de espacio PDF a la hoja visible, en puntos, con origen arriba a la izquierda. */
 function aVista(caja: Caja, rot: number, x: number, y: number): [number, number] {
@@ -302,24 +303,47 @@ describe('documentos cifrados y links', () => {
     await expect(descifrarDocumento(new Uint8Array(40), generarClave())).rejects.toBeInstanceOf(LinkInvalidoError);
   });
 
-  it('arma y lee links', () => {
-    const repo = repoDesdeUbicacion({ hostname: 'estudio.github.io', pathname: '/mi-repo/' });
-    expect(repo).toBe('estudio/mi-repo');
-    expect(repoDesdeUbicacion({ hostname: 'estudio.github.io', pathname: '/firma/estudio/' })).toBe('estudio/firma');
-    expect(repoDesdeUbicacion({ hostname: 'estudio.github.io', pathname: '/' })).toBe('estudio/estudio.github.io');
-    expect(repoDesdeUbicacion({ hostname: 'localhost', pathname: '/firma/' })).toBeNull();
+  it('cifra el permiso que va en el link', async () => {
+    const clave = generarClave();
+    const t = await cifrarTexto('github_pat_123abc', clave);
+    expect(t).not.toContain('github_pat');
+    expect(await descifrarTexto(t, clave)).toBe('github_pat_123abc');
+    await expect(descifrarTexto(t, generarClave())).rejects.toBeInstanceOf(LinkInvalidoError);
+  });
 
-    const datos = { id: generarId(), clave: generarClave(), repo: 'estudio/mi-repo' };
-    const link = crearEnlace('https://estudio.github.io/mi-repo/', datos, repo);
+  it('arma y lee links', async () => {
+    const repo = repoDatosPredeterminado({ hostname: 'estudio.github.io' });
+    expect(repo).toBe('estudio/firma-datos');
+    expect(repoDatosPredeterminado({ hostname: 'localhost' })).toBeNull();
+
+    const clave = generarClave();
+    const datos = { id: generarId(), clave, token: await cifrarTexto('github_pat_x', clave), repo: 'estudio/firma-datos' };
+    const link = crearEnlace('https://estudio.github.io/firma/', datos, repo);
     expect(link).not.toContain('r=');
     expect(leerEnlace(new URL(link).hash, repo)).toEqual(datos);
+    expect(claveDeEnlace(link)).toBe(clave);
 
-    const otro = crearEnlace('http://localhost:5173/', datos, null);
-    expect(leerEnlace(new URL(otro).hash, null)).toEqual(datos);
-    expect(leerEnlace('#d=zz&k=abc', repo)).toBeNull();
-    expect(urlDocumento('estudio/mi-repo', 'abc123')).toBe(
-      'https://raw.githubusercontent.com/estudio/mi-repo/firmas-casos/casos/abc123.firma',
-    );
+    const otro = crearEnlace('http://localhost:5173/', { ...datos, repo: 'otro/docs' }, null);
+    expect(leerEnlace(new URL(otro).hash, null)).toEqual({ ...datos, repo: 'otro/docs' });
+    // Sin el permiso cifrado, el link está incompleto.
+    expect(leerEnlace(`#d=${datos.id}&k=${clave}`, repo)).toBeNull();
+    expect(leerEnlace('#d=zz&k=abc&t=xyz', repo)).toBeNull();
+    expect(rutaDocumento('abc123')).toBe('casos/abc123.firma');
+    expect(rutaFirmado('abc123')).toBe('firmados/abc123.firma');
+  });
+
+  it('cifra el documento firmado que vuelve al estudio', async () => {
+    const clave = generarClave();
+    const dev = { titulo: 'Poder', archivo: 'poder.pdf', datos: 'María Gómez\nDNI 28.765.432', firmas: 2, firmado: '2026-11-01' };
+    const pdf = new Uint8Array([37, 80, 68, 70]);
+    const { cabecera, pdf: vuelta } = await descifrarDocumento<typeof dev>(await cifrarDocumento(pdf, dev, clave), clave);
+    expect(cabecera).toEqual(dev);
+    expect(vuelta).toEqual(pdf);
+  });
+
+  it('aclara que está firmado digitalmente', () => {
+    expect(leyendaDeFirma(null)).toBe('Firmado digitalmente');
+    expect(leyendaDeFirma(new Date(2026, 10, 1, 9, 5))).toBe('Firmado digitalmente el 01/11/2026 a las 09:05 h');
   });
 });
 

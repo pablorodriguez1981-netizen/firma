@@ -6,30 +6,31 @@ Página para que un cliente firme a mano un PDF desde el celular o la computador
 - **Panel del estudio:** https://pablorodriguez1981-netizen.github.io/firma/estudio/
 - **Preparar un documento (estudio):** https://pablorodriguez1981-netizen.github.io/firma/#preparar
 
-## Qué hace el cliente
+## Cómo funciona
 
-Lee el documento, escribe sus datos en un campo libre de varias líneas (nombre, DNI, domicilio…) y firma con el dedo o el mouse. Puede ser:
+1. **Preparás el documento** desde el panel: elegís el PDF y cuántas firmas lleva (una, una distinta en cada hoja, o donde marques). Cada firma se ubica sola **debajo de donde termina el texto** de la hoja (analiza la hoja, así que anda también con escaneados, e ignora el número de página del pie); si no entra, prueba más chica o busca otro lugar libre y, si no hay ninguno, lo avisa con ⚠️. Podés mover cada firma, alinearla y cambiarle el tamaño.
+2. **Le mandás el link al cliente** (WhatsApp o mail).
+3. **El cliente sólo ve el documento, un campo para sus datos** (nombre, DNI, lo que quiera, en varias líneas) **y el recuadro para firmar** con el dedo. Si son varias firmas, firma cada una por separado (Firma 1 → Siguiente/Enter → Firma 2 → …): cada firma es distinta, no una copia. Toca «Firmar y enviar al estudio».
+4. **El documento firmado te llega al panel**: aparece «✅ Firmado», con quién firmó, y lo descargás. El cliente no tiene que mandarte nada (igual puede bajarse una copia). Si no se pudiera guardar, se le avisa y puede descargarlo y mandártelo.
 
-- **Una firma**, en la hoja que elija (por defecto, la última).
-- **Todas las hojas**: firma una vez **por cada hoja**, por separado (Firma 1 → Siguiente/Enter → Firma 2 → …), así cada firma es distinta y no una copia de la misma imagen. Si son 18 hojas, son 18 firmas.
-- **Elegir**: una o varias firmas donde quiera (incluso varias en la misma hoja).
+Cada firma, con los datos debajo y la aclaración en chiquito «Firmado digitalmente el … a las … h», se inserta como imagen en el PDF. Las hojas giradas o de distinto tamaño se firman en la posición correcta.
 
-Cada firma, con los datos debajo (y la fecha y hora, opcional), se arma como una imagen PNG que se inserta en el PDF. **Se ubica sola debajo de donde termina el texto** de cada hoja: analiza la hoja (funciona también con documentos escaneados) e ignora el número de página del pie. Si no entra, prueba más chica y después busca otro lugar libre; si no hay ninguno, lo avisa con ⚠️. Cada firma se puede **mover** arrastrándola (o tocando la hoja donde se la quiere), alinear a izquierda, centro o derecha y cambiar de tamaño. Hay modo pantalla completa para firmar en el celular.
+## Configuración (una sola vez)
 
-Al terminar, descarga o comparte (WhatsApp, mail) el PDF firmado y, si quiere, las imágenes de las firmas (un ZIP si son varias). Las hojas giradas o de distinto tamaño se firman en la posición correcta.
+1. Creá un repositorio **privado** llamado `firma-datos` (https://github.com/new, sin README). Ahí se guardan, cifrados, los documentos que mandás y los firmados.
+2. Creá un *fine-grained token* (https://github.com/settings/personal-access-tokens/new): Repository access › *Only select repositories* › **sólo `firma-datos`**; Permissions › **Contents: Read and write**.
+3. En el **panel del estudio**, pegá el token y tocá «Guardar y probar».
 
-## Mandar un documento con un link
+### Seguridad
 
-1. En el **panel del estudio**, conectá GitHub una sola vez con un *fine-grained token*: Repository access › *Only select repositories* › este repositorio; Permissions › **Contents: Read and write**. El token queda guardado sólo en ese navegador.
-2. **Preparar documento**: elegí el PDF, marcá cuántas firmas y dónde (se ubican solas debajo del texto y las podés mover), escribí el título y las indicaciones y generá el link. Por defecto el cliente no puede cambiar cuántas firmas ni en qué hojas (sí correrlas un poco si tapan algo).
-   **Subida rápida**: subí uno o varios PDF sin marcar lugares (sugerencia: una firma en la última hoja o una en cada hoja) y el cliente decide.
-3. Copiá el link (o mandalo por WhatsApp desde el panel). El cliente lo abre, firma y te devuelve el PDF firmado.
-
-Cada PDF se **cifra en el navegador** (AES-GCM de 256 bits) antes de subirse a la rama `firmas-casos` de este repositorio. La clave va sólo en el link, después del `#`, que los navegadores no envían a ningún servidor: en el repositorio público queda únicamente el archivo cifrado. Desde el panel se puede borrar cada documento cuando ya no haga falta.
+- Cada PDF se **cifra en el navegador** (AES-GCM de 256 bits) antes de subirse; el firmado vuelve cifrado con la misma clave. La clave va sólo en el link, después del `#`, que los navegadores no envían a ningún servidor.
+- Para que el cliente pueda guardar el firmado, el link lleva el permiso de GitHub **cifrado** con la clave del documento. Por eso el token tiene que tener acceso **sólo** a `firma-datos` (nunca al repositorio de la página): quien tenga un link puede escribir ahí, pero no leer los documentos de otros, que van cifrados con otras claves.
+- Si revocás o cambiás el token, los links ya enviados dejan de funcionar (generá links nuevos).
+- La lista de documentos con sus claves queda en el navegador donde los generaste: descargá los firmados desde ese mismo navegador.
 
 **Sin subir nada:** abrí la página de firma, elegí el PDF desde el dispositivo y pasale el teléfono o la tablet al cliente. En ese modo el archivo nunca sale del navegador.
 
-> Es una **firma electrónica** (firma manuscrita digitalizada), no una *firma digital* con certificado en los términos de la Ley 25.506. Si el PDF ya tenía firmas digitales, al agregarle la firma dejan de verificarse (la página lo avisa). Los PDF protegidos con contraseña o contra cambios no se pueden firmar.
+> Técnicamente es una **firma electrónica** (firma manuscrita digitalizada), no una *firma digital* con certificado en los términos de la Ley 25.506, aunque la aclaración diga «Firmado digitalmente». Si el PDF ya tenía firmas digitales, al agregarle la firma dejan de verificarse (la página lo avisa). Los PDF protegidos con contraseña o contra cambios no se pueden firmar.
 
 ## Desarrollo
 
@@ -53,6 +54,6 @@ src/
   estampar.ts         inserta las firmas en el PDF (pdf-lib)
   visor.ts            muestra y analiza las hojas (pdf.js)
   imagen.ts           arma la imagen de cada firma con los datos
-  cifrado.ts, enlace.ts, github.ts, almacen.ts   links cifrados y subida a GitHub
+  cifrado.ts, enlace.ts, github.ts, almacen.ts   links cifrados y documentos en firma-datos
   zip.ts              ZIP de las imágenes de las firmas
 ```
