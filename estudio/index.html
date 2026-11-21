@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob: https://api.github.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Panel del estudio · Firma de documentos</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="theme-color" content="#1f3350" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%231f3350'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='20' text-anchor='middle' fill='%23f5f3ee'%3EF%3C/text%3E%3C/svg%3E"
+    />
+    <script type="module" crossorigin src="/firma/assets/estudio-BMbWuGpo.js"></script>
+    <link rel="modulepreload" crossorigin href="/firma/assets/modulepreload-polyfill-B5Qt9EMX.js">
+    <link rel="modulepreload" crossorigin href="/firma/assets/pdflib-Ckou-aDl.js">
+    <link rel="modulepreload" crossorigin href="/firma/assets/comun-GMPavCNT.js">
+    <link rel="stylesheet" crossorigin href="/firma/assets/comun-lK16B2je.css">
+  </head>
+  <body>
+    <header class="barra">
+      <div class="barra-in">
+        <span class="marca">Firma de documentos<span class="marca-sub">Estudio</span></span>
+        <a class="boton chico" href="../">Página de firma</a>
+      </div>
+    </header>
+
+    <main class="contenedor angosto">
+      <section class="intro">
+        <p class="antetitulo">Panel del estudio</p>
+        <h1>Documentos para firmar</h1>
+        <p class="bajada">
+          Prepare el documento, envíe el enlace al cliente y descargue aquí el documento firmado. El cliente no necesita reenviarlo.
+        </p>
+      </section>
+
+      <section class="tarjeta" id="conexion">
+        <h2><span class="num">1</span> Conexión <small class="estado-chip" id="chip-conexion">Sin conectar</small></h2>
+        <div id="conexion-form">
+          <p class="ayuda">
+            Los documentos enviados y los firmados se guardan cifrados en un repositorio privado de GitHub, separado del de esta
+            página. La configuración se hace una sola vez y queda guardada en este navegador.
+          </p>
+          <ol class="lista-pasos">
+            <li>
+              Crear el repositorio de documentos en <a href="https://github.com/new" target="_blank" rel="noopener">github.com/new</a>:
+              nombre <code id="repo-nombre">firma-datos</code>, visibilidad <strong>Private</strong>, sin README.
+            </li>
+            <li>Crear un token en <a id="link-token" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub › Fine-grained tokens</a>, con el vencimiento más largo disponible.</li>
+            <li><em>Repository access</em>: <em>Only select repositories</em>, únicamente <code id="repo-sugerido">firma-datos</code>.</li>
+            <li><em>Repository permissions</em> › <em>Contents</em>: <strong>Read and write</strong>.</li>
+            <li>Copiar el token y pegarlo debajo.</li>
+          </ol>
+          <p class="ayuda nota-seguridad">
+            Cada enlace incluye, cifrado, el permiso para guardar el documento firmado en ese repositorio. Por eso el token debe tener
+            acceso únicamente a <code>firma-datos</code> y nunca al repositorio de la página.
+          </p>
+          <label class="campo">
+            <span>Repositorio de documentos</span>
+            <input id="repo" placeholder="usuario/firma-datos" autocomplete="off" spellcheck="false" />
+          </label>
+          <label class="campo">
+            <span>Token</span>
+            <input id="token" type="password" placeholder="github_pat_…" autocomplete="off" spellcheck="false" />
+          </label>
+          <div class="fila-botones">
+            <button type="button" class="boton principal" id="conectar">Guardar y verificar</button>
+          </div>
+        </div>
+        <div id="conexion-ok" class="fila-botones" hidden>
+          <span class="ayuda" id="conexion-detalle"></span>
+          <button type="button" class="boton chico" id="olvidar">Desconectar</button>
+        </div>
+        <p id="estado-conexion" class="estado" role="status"></p>
+      </section>
+
+      <section class="tarjeta">
+        <h2>
+          <span class="num">2</span> Documentos enviados
+          <button type="button" class="boton chico boton-h2" id="actualizar">Actualizar</button>
+        </h2>
+        <p id="estado-lista" class="estado" role="status"></p>
+        <ul id="lista" class="lista-links"></ul>
+        <p id="lista-vacia" class="ayuda vacia">Todavía no hay documentos enviados desde este navegador.</p>
+      </section>
+
+      <section class="tarjeta destacada">
+        <h2><span class="num">3</span> Preparar un documento</h2>
+        <p class="ayuda">
+          Seleccione el PDF e indique cuántas firmas lleva: una, una por hoja o en lugares a elección. Las firmas se ubican
+          debajo del texto y pueden ajustarse. El cliente sólo verá el documento, el campo para sus datos y el recuadro de firma.
+        </p>
+        <a class="boton principal grande" href="../#preparar">Preparar documento</a>
+      </section>
+
+      <section class="tarjeta" id="subir-seccion">
+        <h2><span class="num">4</span> Envío rápido <small class="sub-h2">Sin indicar lugares: las firmas se ubican solas.</small></h2>
+        <label class="soltar" id="soltar">
+          <input type="file" id="archivos" accept="application/pdf,.pdf" multiple />
+          <strong>Seleccionar uno o varios PDF</strong>
+          <span>o arrastrarlos aquí. Se genera un enlace por archivo.</span>
+        </label>
+        <ul id="elegidos" class="elegidos"></ul>
+        <label class="campo">
+          <span>Título del documento <small>(opcional; por defecto, el nombre del archivo)</small></span>
+          <input id="titulo" placeholder="Por ejemplo: Poder especial" />
+        </label>
+        <label class="campo">
+          <span>Indicaciones para el cliente <small>(opcional)</small></span>
+          <textarea id="indicaciones" rows="3" placeholder="Por ejemplo: leer con atención antes de firmar."></textarea>
+        </label>
+        <fieldset class="campo">
+          <legend>Firmas</legend>
+          <div class="alcances">
+            <label class="alcance"><input type="radio" name="sugerencia" value="ultima" checked /><span><strong>Una firma</strong><small>En la última hoja, debajo del texto</small></span></label>
+            <label class="alcance"><input type="radio" name="sugerencia" value="todas" /><span><strong>Todas las hojas</strong><small>Una firma por hoja</small></span></label>
+          </div>
+        </fieldset>
+        <button type="button" class="boton principal grande" id="subir">Generar enlace</button>
+        <p id="estado-subida" class="estado" role="status"></p>
+      </section>
+
+      <section class="tarjeta">
+        <h2>Firma presencial</h2>
+        <p class="ayuda">
+          Para firmar en el estudio, abra la <a href="../">página de firma</a>, seleccione el PDF y entregue el dispositivo al
+          cliente. No se sube ningún archivo.
+        </p>
+      </section>
+    </main>
+
+    <footer class="pie">
+      <p>El token y la lista de documentos, con las claves para abrirlos, se guardan únicamente en este navegador.</p>
+    </footer>
+
+  </body>
+</html>
